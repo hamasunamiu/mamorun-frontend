@@ -39,6 +39,7 @@ export async function apiFetch<T>(
 
   if (response.status === 401 || response.status === 403) {
     handleUnauthorized(response.status);
+    return new Promise<T>(() => {});
   }
 
   const json = await response.json();
