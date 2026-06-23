@@ -62,9 +62,11 @@ export default function LoginPage() {
     } catch (err) {
       if (err instanceof ApiError) {
         setAuthError(err.message);
-        setIsSubmitting(false);
-        return;
+      } else {
+        setAuthError("通信エラーが発生しました。時間をおいて再度お試しください。");
       }
+      setIsSubmitting(false);
+      return;
     }
 
     router.push("/home");
