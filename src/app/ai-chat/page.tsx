@@ -3,7 +3,7 @@ import { BottomNavigation } from "@/components/common/BottomNavigation";
 
 export default function AiChatPage() {
   return (
-    <div className="min-h-screen bg-[#FFF9F5] flex flex-col">
+    <div className="min-h-screen bg-[#FFF9F5] flex flex-col pb-16">
       <Header title="獣医師AI相談" />
 
       <div className="flex-1 p-4 flex flex-col gap-3">
@@ -30,7 +30,7 @@ export default function AiChatPage() {
 
       </div>
 
-      <div className="bg-white border-t border-[#e0d6ce] px-4 py-3">
+      <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-[#e0d6ce] px-4 py-3">
         <div className="flex items-end gap-2">
           <textarea
             placeholder="気になることを入力..."
