@@ -46,7 +46,17 @@ export async function apiFetch<T>(
     );
   }
 
-  const json = await response.json();
+  let json: { data?: T; error?: { code: string; message: string } };
+
+  try {
+    json = await response.json();
+  } catch {
+    throw new ApiError(
+      "INVALID_RESPONSE",
+      "サーバーから予期しない応答がありました。時間をおいて再度お試しください。",
+      response.status
+    );
+  }
 
   if (!response.ok) {
     throw new ApiError(

@@ -17,6 +17,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   AI_LIMIT_EXCEEDED: "本日の無料利用回数に達しました。プレミアムプランへのアップグレードをご検討ください。",
   INVALID_SPECIES: "犬または猫を選択してください。",
   INVALID_NOTIFICATION_TIME: "通知タイミングを選択してください。",
+  INVALID_RESPONSE: "サーバーから予期しない応答がありました。時間をおいて再度お試しください。",
 } as const;
 
 const DEFAULT_MESSAGE = "エラーが発生しました。時間をおいて再度お試しください。";
