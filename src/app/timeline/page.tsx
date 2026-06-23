@@ -1,5 +1,10 @@
+"use client";
 import { Header } from "@/components/common/Header";
 import { BottomNavigation } from "@/components/common/BottomNavigation";
+import { InputField } from "@/components/common/InputFields";
+import { TextAreaField } from "@/components/common/TextAreaField";
+import { ImageUploader } from "@/components/common/ImageUploader";
+import { PrimaryButton } from "@/components/common/PrimaryButton";
 
 export default function TimelinePage() {
   return (
@@ -13,21 +18,26 @@ export default function TimelinePage() {
 
         <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
           <p className="text-sm font-medium text-[#993C1D] mb-3">✏️ 今日の記録を追加</p>
-          <div className="mb-3">
-            <p className="text-xs text-gray-500 mb-1">タイトル <span className="text-[#D85A30]">必須</span></p>
-            <input type="text" placeholder="例：朝の体調チェック" className="w-full border border-[#e0d6ce] rounded-lg px-3 py-2.5 text-sm bg-[#FFF9F5] outline-none" />
+          <div className="flex flex-col gap-3">
+            <InputField
+              label="タイトル"
+              name="title"
+              placeholder="例：朝の体調チェック"
+              required
+            />
+            <TextAreaField
+              label="体調メモ"
+              name="memo"
+              placeholder="例：食欲あり、元気です"
+            />
+            <ImageUploader
+              label="写真"
+              onFileSelect={() => {}}
+            />
           </div>
-          <div className="mb-3">
-            <p className="text-xs text-gray-500 mb-1">体調メモ <span className="text-[#b0a090]">任意</span></p>
-            <textarea placeholder="例：食欲あり、元気です" rows={2} className="w-full border border-[#e0d6ce] rounded-lg px-3 py-2.5 text-sm bg-[#FFF9F5] outline-none resize-none" />
-          </div>
-          <div className="mb-3">
-            <p className="text-xs text-gray-500 mb-1">写真 <span className="text-[#b0a090]">任意</span></p>
-            <div className="w-full h-20 border border-dashed border-[#e0a080] rounded-lg bg-[#FFF9F5] flex items-center justify-center gap-2 text-sm text-[#993C1D]">
-              📷 写真を追加する
-            </div>
-          </div>
-          <button className="w-full py-3 rounded-xl bg-[#D85A30] text-white text-sm font-medium">投稿する</button>
+          <PrimaryButton className="w-full mt-3 bg-[#D85A30] text-white hover:bg-[#D85A30] hover:opacity-85">
+            投稿する
+          </PrimaryButton>
         </div>
 
         <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
