@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { PawIcon } from "./PawIcon";
 import type { ComponentProps } from "react";
 
 type PrimaryButtonProps = ComponentProps<typeof Button> & {
@@ -15,7 +14,7 @@ export function PrimaryButton({
 }: PrimaryButtonProps) {
   return (
     <Button className={className} {...props}>
-      {showPaw && <PawIcon className="h-[18px] w-[18px]" />}
+      {showPaw && <span aria-hidden="true">🐾</span>}
       {children}
     </Button>
   );
