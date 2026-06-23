@@ -31,14 +31,14 @@ export function BottomNavigation() {
             <Icon
               className={cn(
                 "h-[22px] w-[22px]",
-                isActive ? "text-emerald-600" : "text-muted-foreground"
+                isActive ? "text-[#C4956A]" : "text-muted-foreground"
               )}
               aria-hidden="true"
             />
             <span
               className={cn(
                 "text-[10px]",
-                isActive ? "text-emerald-600" : "text-muted-foreground"
+                isActive ? "text-[#C4956A]" : "text-muted-foreground"
               )}
             >
               {label}
