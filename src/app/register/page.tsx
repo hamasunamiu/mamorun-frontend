@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link"; // ★追加：ログイン画面への誘導リンク用
+import Link from "next/link"; // 
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,8 +13,33 @@ import { ToggleOptionGroup } from "@/components/common/ToggleOptionGroup";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { Modal } from "@/components/common/Modal"; 
 import { supabase } from "@/lib/supabase";
 import { apiFetch, ApiError } from "@/lib/api-client";
+
+const INVITE_ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
+  INVALID_INVITE_TOKEN: {
+    title: "招待リンクが無効です",
+    description: "無効な招待URLです。",
+  },
+  INVITE_TOKEN_GONE: {
+    title: "招待リンクの有効期限が切れています",
+    description: "この招待リンクは有効期限が切れているか、すでに使用されています。",
+  },
+  ALREADY_PAIRED: {
+    title: "すでに参加済みです",
+    description: "既にこのペットの家族メンバーに登録されています。",
+  },
+  FAMILY_LIMIT_REACHED: {
+    title: "招待を受け付けられません",
+    description: "家族の登録上限（最大4人）に達しているため参加できません。",
+  },
+};
+
+const INVITE_ERROR_FALLBACK = {
+  title: "エラーが発生しました",
+  description: "通信エラーが発生しました。時間をおいて再度お試しください。",
+};
 
 const petSchema = z.object({
   species: z.enum(["dog", "cat"], { message: "犬または猫を選択してください" }),
@@ -64,11 +89,14 @@ export default function RegisterPage() {
   const inviteToken = searchParams.get("token");
 
   const [authError, setAuthError] = useState<string | null>(null);
-  // ★追加：メールアドレス重複エラーかどうかを判定するための専用state
+  // メールアドレス重複エラーかどうかを判定するための専用state
   // 「エラー文言（authError）」と「ログイン誘導リンクを出すかどうか」を分けて管理することで、
   // 通信エラーやペット登録失敗時には誤ってリンクが出ないようにする
   const [isEmailDuplicateError, setIsEmailDuplicateError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [inviteError, setInviteError] = useState<{ title: string; description: string } | null>(
+    null
+  );
 
   const {
     register,
@@ -91,7 +119,7 @@ export default function RegisterPage() {
 
   const onSubmit = async (values: RegisterFormValues) => {
     setAuthError(null);
-    setIsEmailDuplicateError(false); // ★追加：送信開始時にリセット
+    setIsEmailDuplicateError(false); // 送信開始時にリセット
     setIsSubmitting(true);
 
     // ① Supabase Authでアカウント作成
@@ -101,11 +129,8 @@ export default function RegisterPage() {
     });
 
     if (signUpError) {
-      // ★変更：このブロックに到達する＝Supabase Authの登録失敗であり、
-      // 画面設計書のバリデーション仕様上は「メールアドレス重複」として扱う想定。
-      // （MVPスコープのためレートリミット等の細かいエラー種別の判定は行わない）
       setAuthError("このメールアドレスはすでに登録されています。すでにアカウントをお持ちの場合はログインをお試しください。解決しない場合はお問い合わせください。");
-      setIsEmailDuplicateError(true); // ★追加：ログイン誘導リンクを表示するフラグを立てる
+      setIsEmailDuplicateError(true); // ログイン誘導リンクを表示するフラグを立てる
       setIsSubmitting(false);
       return;
     }
@@ -119,7 +144,6 @@ export default function RegisterPage() {
           ? err.message
           : "通信エラーが発生しました。時間をおいて再度お試しください。"
       );
-      // ★ここでは isEmailDuplicateError を立てない（通信エラーなのでリンクは不要）
       setIsSubmitting(false);
       return;
     }
@@ -139,7 +163,6 @@ export default function RegisterPage() {
             ? err.message
             : "ペット情報の登録に失敗しました。時間をおいて再度お試しください。"
         );
-        // ★ここでも isEmailDuplicateError は立てない（ペット登録失敗なのでリンクは不要）
         setIsSubmitting(false);
         return;
       }
@@ -152,13 +175,12 @@ export default function RegisterPage() {
           method: "POST",
         });
       } catch (err) {
-        if (err instanceof ApiError) {
-          setAuthError(err.message);
-        } else {
-          setAuthError("通信エラーが発生しました。時間をおいて再度お試しください。");
-        }
+        const errorContent =
+          err instanceof ApiError && INVITE_ERROR_MESSAGES[err.code]
+            ? INVITE_ERROR_MESSAGES[err.code]
+            : INVITE_ERROR_FALLBACK;
+        setInviteError(errorContent);
         setIsSubmitting(false);
-        router.push("/login");
         return;
       }
     }
@@ -299,7 +321,7 @@ export default function RegisterPage() {
           {authError && (
             <div className="flex flex-col gap-2">
               <ErrorMessage message={authError} />
-              {/* ★追加：メールアドレス重複エラーの時だけログイン画面への誘導リンクを表示 */}
+              {/* メールアドレス重複エラーの時だけログイン画面への誘導リンクを表示 */}
               {isEmailDuplicateError && (
                 <Link
                   href="/login"
@@ -321,6 +343,29 @@ export default function RegisterPage() {
           </PrimaryButton>
         </form>
       </div>
+
+      {/* OKボタン押下だけでなく、背景クリック・Escキーでの閉じる操作（onOpenChange）でも
+          例外なく /login へ遷移させる（任意の閉じ方で離脱できてしまうのを防ぐ） */}
+      <Modal
+        open={inviteError !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setInviteError(null);
+            router.push("/login");
+          }
+        }}
+        title={inviteError?.title ?? ""}
+        description={inviteError?.description}
+        footer={
+          <PrimaryButton
+            type="button"
+            onClick={() => router.push("/login")}
+            className="rounded-3xl bg-[#C69A6B] hover:bg-[#C69A6B] hover:opacity-85"
+          >
+            ログイン画面へ
+          </PrimaryButton>
+        }
+      />
     </main>
   );
 }
