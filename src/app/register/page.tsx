@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link"; // ★追加：ログイン画面への誘導リンク用
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -63,6 +64,10 @@ export default function RegisterPage() {
   const inviteToken = searchParams.get("token");
 
   const [authError, setAuthError] = useState<string | null>(null);
+  // ★追加：メールアドレス重複エラーかどうかを判定するための専用state
+  // 「エラー文言（authError）」と「ログイン誘導リンクを出すかどうか」を分けて管理することで、
+  // 通信エラーやペット登録失敗時には誤ってリンクが出ないようにする
+  const [isEmailDuplicateError, setIsEmailDuplicateError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
@@ -86,6 +91,7 @@ export default function RegisterPage() {
 
   const onSubmit = async (values: RegisterFormValues) => {
     setAuthError(null);
+    setIsEmailDuplicateError(false); // ★追加：送信開始時にリセット
     setIsSubmitting(true);
 
     // ① Supabase Authでアカウント作成
@@ -95,7 +101,11 @@ export default function RegisterPage() {
     });
 
     if (signUpError) {
-      setAuthError("このメールアドレスはすでに登録されています");
+      // ★変更：このブロックに到達する＝Supabase Authの登録失敗であり、
+      // 画面設計書のバリデーション仕様上は「メールアドレス重複」として扱う想定。
+      // （MVPスコープのためレートリミット等の細かいエラー種別の判定は行わない）
+      setAuthError("このメールアドレスはすでに登録されています。すでにアカウントをお持ちの場合はログインをお試しください。解決しない場合はお問い合わせください。");
+      setIsEmailDuplicateError(true); // ★追加：ログイン誘導リンクを表示するフラグを立てる
       setIsSubmitting(false);
       return;
     }
@@ -109,6 +119,7 @@ export default function RegisterPage() {
           ? err.message
           : "通信エラーが発生しました。時間をおいて再度お試しください。"
       );
+      // ★ここでは isEmailDuplicateError を立てない（通信エラーなのでリンクは不要）
       setIsSubmitting(false);
       return;
     }
@@ -128,6 +139,7 @@ export default function RegisterPage() {
             ? err.message
             : "ペット情報の登録に失敗しました。時間をおいて再度お試しください。"
         );
+        // ★ここでも isEmailDuplicateError は立てない（ペット登録失敗なのでリンクは不要）
         setIsSubmitting(false);
         return;
       }
@@ -284,7 +296,20 @@ export default function RegisterPage() {
             </>
           )}
 
-          {authError && <ErrorMessage message={authError} />}
+          {authError && (
+            <div className="flex flex-col gap-2">
+              <ErrorMessage message={authError} />
+              {/* ★追加：メールアドレス重複エラーの時だけログイン画面への誘導リンクを表示 */}
+              {isEmailDuplicateError && (
+                <Link
+                  href="/login"
+                  className="text-sm font-medium text-[#9E7654] underline underline-offset-2"
+                >
+                  ログイン画面へ
+                </Link>
+              )}
+            </div>
+          )}
 
           <PrimaryButton
             type="submit"
