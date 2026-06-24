@@ -7,7 +7,7 @@ import type { ComponentProps } from "react";
 type TextAreaFieldProps = ComponentProps<typeof Textarea> & {
   /** 入力欄のラベル */
   label: string;
-  /** 必須項目かどうか（ラベル横に*を表示） */
+  /** 必須項目かどうか（ラベル横に「必須」バッジを表示） */
   required?: boolean;
   /** バリデーションエラーメッセージ */
   error?: string;
@@ -21,9 +21,11 @@ export const TextAreaField = forwardRef<HTMLTextAreaElement, TextAreaFieldProps>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={textareaId} className="text-sm text-foreground">
           {label}
-          {required && <span className="ml-0.5 text-destructive">*</span>}
-          {!required && (
-            <span className="ml-1.5 text-xs text-muted-foreground">任意</span>
+          {/* 「必須」の時だけバッジを表示し、それ以外（任意）は何も表示しない。 */}
+          {required && (
+            <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
+              必須
+            </span>
           )}
         </Label>
         <Textarea

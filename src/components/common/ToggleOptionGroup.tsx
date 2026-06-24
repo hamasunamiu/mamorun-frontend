@@ -11,7 +11,7 @@ type Option = {
 type ToggleOptionGroupProps = {
   /** ラベル */
   label: string;
-  /** 必須項目かどうか */
+  /** 必須項目かどうか（ラベル横に「必須」バッジを表示） */
   required?: boolean;
   /** 選択肢一覧 */
   options: Option[];
@@ -35,7 +35,12 @@ export function ToggleOptionGroup({
     <div className="flex flex-col gap-1.5">
       <p className="text-sm font-medium text-foreground">
         {label}
-        {required && <span className="ml-0.5 text-destructive">*</span>}
+        {/* 「必須」バッジ表示 */}
+        {required && (
+          <span className="ml-3.5 rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
+            必須
+          </span>
+        )}
       </p>
       <div className="flex gap-2">
         {options.map((option) => {
