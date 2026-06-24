@@ -82,6 +82,7 @@ export default function CareHomePage() {
   // notification_time・line_user_id等を今後の機能（UI-005設定画面連携等）で使う予定のため保持する
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
   const [pet, setPet] = useState<Pet | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -133,6 +134,12 @@ export default function CareHomePage() {
     fetchInitialData();
   }, [router]);
 
+  useEffect(() => {
+    // マウント完了をフラグで示すだけにする（cascading render警告を回避）
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsMounted(true);
+  }, []);
+
   if (isLoading) {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-md items-center justify-center bg-[#FAF8F6]">
@@ -153,7 +160,7 @@ export default function CareHomePage() {
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-[#FAF8F6]">
       <Header
         petName={pet?.name}
-        dateLabel={formatDateLabel(new Date())}
+        dateLabel={isMounted ? formatDateLabel(new Date()) : undefined}
         onPetSwitch={() => {
           // TODO: 複数ペット一覧取得APIの仕様確定後に実装（バックエンドチームに確認依頼中）
         }}
