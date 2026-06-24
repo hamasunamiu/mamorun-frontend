@@ -44,7 +44,7 @@ const registerSchema = z.object({
     .string()
     .min(1, "パスワードを入力してください")
     .min(8, "8文字以上で入力してください"),
-  pets: z.array(petSchema).min(1),
+  pets: z.array(petSchema),
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -75,7 +75,7 @@ export default function RegisterPage() {
     defaultValues: {
       email: "",
       password: "",
-      pets: [EMPTY_PET],
+      pets: inviteToken ? [] : [EMPTY_PET],
     },
   });
 
@@ -113,22 +113,24 @@ export default function RegisterPage() {
       return;
     }
 
-    // ③ ペット情報を登録（1匹目→ペアリング、2匹目以降→追加登録）
-    try {
-      for (const pet of values.pets) {
-        await apiFetch("/api/pets", {
-          method: "POST",
-          body: JSON.stringify(pet),
-        });
+    // ③ ペット情報を登録（招待経由の場合はスキップ：招待受諾でpet_idがセットされるため）
+    if (!inviteToken) {
+      try {
+        for (const pet of values.pets) {
+          await apiFetch("/api/pets", {
+            method: "POST",
+            body: JSON.stringify(pet),
+          });
+        }
+      } catch (err) {
+        setAuthError(
+          err instanceof ApiError
+            ? err.message
+            : "ペット情報の登録に失敗しました。時間をおいて再度お試しください。"
+        );
+        setIsSubmitting(false);
+        return;
       }
-    } catch (err) {
-      setAuthError(
-        err instanceof ApiError
-          ? err.message
-          : "ペット情報の登録に失敗しました。時間をおいて再度お試しください。"
-      );
-      setIsSubmitting(false);
-      return;
     }
 
     // ④ 招待URL経由の場合、トークンをパスパラメータとして送信
@@ -157,7 +159,9 @@ export default function RegisterPage() {
       <div className="mx-auto max-w-md">
         <h1 className="text-xl font-bold text-[#5C4631]">アカウント登録</h1>
         <p className="mt-1 text-sm text-[#9E7654]">
-          ペット情報もあわせて登録しましょう
+          {inviteToken
+            ? "招待された家族として参加しましょう"
+            : "ペット情報もあわせて登録しましょう"}
         </p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex flex-col gap-6">
@@ -184,97 +188,101 @@ export default function RegisterPage() {
             />
           </section>
 
-          {/* ペット情報（複数） */}
-          {fields.map((field, index) => (
-            <section
-              key={field.id}
-              className="flex flex-col gap-3 rounded-2xl bg-white p-4"
-            >
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-[#6E5849]">
-                  ペット情報（{index + 1}匹目）
-                </h2>
-                {fields.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => remove(index)}
-                    aria-label="このペットを削除"
-                    className="text-muted-foreground"
-                  >
-                    <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                )}
-              </div>
+          {/* ペット情報（複数）：招待経由の場合は表示しない */}
+          {!inviteToken && (
+            <>
+              {fields.map((field, index) => (
+                <section
+                  key={field.id}
+                  className="flex flex-col gap-3 rounded-2xl bg-white p-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-[#6E5849]">
+                      ペット情報（{index + 1}匹目）
+                    </h2>
+                    {fields.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => remove(index)}
+                        aria-label="このペットを削除"
+                        className="text-muted-foreground"
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    )}
+                  </div>
 
-              <Controller
-                control={control}
-                name={`pets.${index}.species`}
-                render={({ field: f }) => (
-                  <ToggleOptionGroup
-                    label="種類"
-                    required
-                    value={f.value}
-                    onChange={f.onChange}
-                    options={[
-                      { value: "dog", label: "犬", icon: "🐶" },
-                      { value: "cat", label: "猫", icon: "🐱" },
-                    ]}
-                    error={errors.pets?.[index]?.species?.message}
+                  <Controller
+                    control={control}
+                    name={`pets.${index}.species`}
+                    render={({ field: f }) => (
+                      <ToggleOptionGroup
+                        label="種類"
+                        required
+                        value={f.value}
+                        onChange={f.onChange}
+                        options={[
+                          { value: "dog", label: "犬", icon: "🐶" },
+                          { value: "cat", label: "猫", icon: "🐱" },
+                        ]}
+                        error={errors.pets?.[index]?.species?.message}
+                      />
+                    )}
                   />
-                )}
-              />
 
-              <InputField
-                label="名前"
-                required
-                placeholder="例：むぎ"
-                {...register(`pets.${index}.name`)}
-                error={errors.pets?.[index]?.name?.message}
-              />
-
-              <Controller
-                control={control}
-                name={`pets.${index}.gender`}
-                render={({ field: f }) => (
-                  <ToggleOptionGroup
-                    label="性別"
+                  <InputField
+                    label="名前"
                     required
-                    value={f.value}
-                    onChange={f.onChange}
-                    options={[
-                      { value: "male", label: "おとこのこ" },
-                      { value: "female", label: "おんなのこ" },
-                    ]}
-                    error={errors.pets?.[index]?.gender?.message}
+                    placeholder="例：むぎ"
+                    {...register(`pets.${index}.name`)}
+                    error={errors.pets?.[index]?.name?.message}
                   />
-                )}
-              />
 
-              <InputField
-                label="生年月日"
-                required
-                type="date"
-                {...register(`pets.${index}.birthday`)}
-                error={errors.pets?.[index]?.birthday?.message}
-              />
+                  <Controller
+                    control={control}
+                    name={`pets.${index}.gender`}
+                    render={({ field: f }) => (
+                      <ToggleOptionGroup
+                        label="性別"
+                        required
+                        value={f.value}
+                        onChange={f.onChange}
+                        options={[
+                          { value: "male", label: "おとこのこ" },
+                          { value: "female", label: "おんなのこ" },
+                        ]}
+                        error={errors.pets?.[index]?.gender?.message}
+                      />
+                    )}
+                  />
 
-              <TextAreaField
-                label="持病・特記事項"
-                placeholder="例：アレルギーあり"
-                {...register(`pets.${index}.illness`)}
-                error={errors.pets?.[index]?.illness?.message}
-              />
-            </section>
-          ))}
+                  <InputField
+                    label="生年月日"
+                    required
+                    type="date"
+                    {...register(`pets.${index}.birthday`)}
+                    error={errors.pets?.[index]?.birthday?.message}
+                  />
 
-          <button
-            type="button"
-            onClick={() => append(EMPTY_PET)}
-            className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2.5 text-sm text-muted-foreground"
-          >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            ＋ペットを追加する
-          </button>
+                  <TextAreaField
+                    label="持病・特記事項"
+                    placeholder="例：アレルギーあり"
+                    {...register(`pets.${index}.illness`)}
+                    error={errors.pets?.[index]?.illness?.message}
+                  />
+                </section>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => append(EMPTY_PET)}
+                className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2.5 text-sm text-muted-foreground"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                ＋ペットを追加する
+              </button>
+            </>
+          )}
 
           {authError && <ErrorMessage message={authError} />}
 
