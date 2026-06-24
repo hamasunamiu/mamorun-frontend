@@ -94,11 +94,12 @@ export default function TimelinePage() {
           </div>
           <p className="text-sm font-medium text-gray-800 mb-1">
             朝の散歩、元気いっぱい！
-          </p>
-          <div className="w-full h-32 bg-[#f5ede8] rounded-lg flex items-center justify-center mb-2">
-            <span className="text-3xl">🐾</span>
-          </div>
-          <p className="text-sm text-gray-500 leading-relaxed mb-3">
+            {/* タイムラインログ1の画像部分を差し替え */}
+            <img
+              src="/images/timeline-shiba.png"
+              alt="散歩の様子"
+              className="w-full h-32 rounded-lg object-cover mb-2"
+            />
             今日はいつもより長めに歩いた。食欲も普通。うんちは1回、問題なし。
           </p>
           <div className="flex justify-end border-t border-[#f0e8e0] pt-2">
@@ -133,13 +134,26 @@ export default function TimelinePage() {
 
       {/* 削除確認モーダル */}
       <Modal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleDeleteConfirm}
+        open={isDeleteModalOpen}
+        onOpenChange={(open) => setIsDeleteModalOpen(open)}
         title="ログを削除しますか？"
         description="この操作は取り消せません。"
-        confirmLabel="削除する"
-        cancelLabel="キャンセル"
+        footer={
+          <div className="flex gap-2 w-full">
+            <button
+              className="flex-1 py-2 rounded-lg border border-[#e0d6ce] text-sm text-gray-500"
+              onClick={() => setIsDeleteModalOpen(false)}
+            >
+              キャンセル
+            </button>
+            <button
+              className="flex-1 py-2 rounded-lg bg-red-500 text-white text-sm"
+              onClick={handleDeleteConfirm}
+            >
+              削除する
+            </button>
+          </div>
+        }
       />
 
       <div className="fixed bottom-0 left-0 right-0">
