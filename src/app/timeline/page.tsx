@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Header } from "@/components/common/Header";
 import { BottomNavigation } from "@/components/common/BottomNavigation";
-import { InputField } from "@/components/common/InputFields"; //プルリクレビューによりInputFieldsがInputFieldに。
+import { InputField } from "@/components/common/InputField"; //プルリクレビューによりInputFieldsがInputFieldに。
 import { TextAreaField } from "@/components/common/TextAreaField";
 import { ImageUploader } from "@/components/common/ImageUploader";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
