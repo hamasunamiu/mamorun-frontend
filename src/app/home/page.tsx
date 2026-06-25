@@ -15,8 +15,13 @@ import { InputField } from "@/components/common/InputField";
 import { TextAreaField } from "@/components/common/TextAreaField";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { apiFetch, ApiError } from "@/lib/api-client";
+import { supabase } from "@/lib/supabase";
 import { TodoCard } from "./_components/TodoCard";
 import { ScheduleCard } from "./_components/ScheduleCard";
+
+// ============================================================
+// 型定義（API設計書のレスポンス例に準拠）
+// ============================================================
 
 type Profile = {
   id: string;
@@ -64,6 +69,10 @@ type Schedule = {
   created_at: string;
 };
 
+// ============================================================
+// フォーム用Zodスキーマ（画面設計書のバリデーション表に準拠）
+// ============================================================
+
 const scheduleFormSchema = z.object({
   title: z
     .string()
@@ -103,9 +112,12 @@ const todoFormSchema = z.object({
 
 type TodoFormValues = z.infer<typeof todoFormSchema>;
 
-// ▼▼▼ 動作確認用モックデータ（ステップ2：静的UI構築用） ▼▼▼
-// バックエンド接続後、このブロックと下記useEffect内の切り替えは必ず削除し、
-// 元のapiFetch呼び出しのみに戻すこと
+// ============================================================
+// 動作確認用モックデータ
+// ▼▼▼ バックエンド接続後、このブロックと下記useEffect内の切り替えは必ず削除し、
+//     元のapiFetch呼び出しのみに戻すこと ▼▼▼
+// ============================================================
+
 const MOCK_PROFILE: Profile = {
   id: "mock-profile-id",
   line_user_id: null,
@@ -172,7 +184,7 @@ const MOCK_SCHEDULES: Schedule[] = [
     scheduled_content: null,
     scheduled_date: "2026-07-01",
     is_completed: false,
-    created_at: "2025-07-1T00:00:00.000Z",
+    created_at: "2025-07-01T00:00:00.000Z",
   },
   {
     id: "schedule-2",
@@ -184,10 +196,16 @@ const MOCK_SCHEDULES: Schedule[] = [
     created_at: "2026-06-15T00:00:00.000Z",
   },
 ];
+
 // ▲▲▲ 動作確認用モックデータここまで ▲▲▲
 
 // ▼ 動作確認用フラグ：バックエンド接続後は false に変更、または関連コードを削除すること
 const USE_MOCK_DATA = true;
+
+// ============================================================
+// 表示専用のフォーマット関数
+// （クライアント側でのみ呼び出すこと。isMountedガードと組み合わせて使用する）
+// ============================================================
 
 function formatDateLabel(date: Date): string {
   const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
@@ -218,6 +236,9 @@ function formatDaysUntil(scheduledDate: string, today: Date): string {
 export default function CareHomePage() {
   const router = useRouter();
 
+  // ------------------------------------------------------------
+  // state
+  // ------------------------------------------------------------
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   const [pet, setPet] = useState<Pet | null>(null);
@@ -225,18 +246,24 @@ export default function CareHomePage() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+
   const [isTodoModalOpen, setIsTodoModalOpen] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(
+    null
+  );
+  // 削除確認Modal用：「何を削除しようとしているか」をtype/id/nameで保持し、
+  // ToDo・予定共通の確認Modalを1つだけ用意する
   const [deleteTarget, setDeleteTarget] = useState<{
     type: "todo" | "schedule";
     id: string;
     name: string;
   } | null>(null);
-  const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
-  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(
-    null
-  );
 
+  // ------------------------------------------------------------
+  // フォーム
+  // ------------------------------------------------------------
   const {
     register: registerTodo,
     handleSubmit: handleSubmitTodo,
@@ -248,12 +275,6 @@ export default function CareHomePage() {
       taskName: "",
     },
   });
-
-  const handleStartEditTodo = (todo: Todo) => {
-    setEditingTodoId(todo.id);
-    resetTodoForm({ taskName: todo.task_name });
-    setIsTodoModalOpen(true);
-  };
 
   const {
     register: registerSchedule,
@@ -269,18 +290,19 @@ export default function CareHomePage() {
     },
   });
 
-  // ★追加：予定の編集を開始する処理。フォームに既存の値をセットし、編集モードに切り替える
-  const handleStartEditSchedule = (schedule: Schedule) => {
-    setEditingScheduleId(schedule.id);
-    resetScheduleForm({
-      title: schedule.title,
-      scheduledContent: schedule.scheduled_content ?? "",
-      scheduledDate: schedule.scheduled_date,
-    });
-    setIsScheduleModalOpen(true);
+  // ------------------------------------------------------------
+  // ToDo関連のイベントハンドラ
+  // ------------------------------------------------------------
+
+  const handleStartEditTodo = (todo: Todo) => {
+    setEditingTodoId(todo.id);
+    resetTodoForm({ taskName: todo.task_name });
+    setIsTodoModalOpen(true);
   };
 
   const handleToggleTodo = (todoId: string) => {
+    // 本来はPATCH /api/todos/:todoIdを呼ぶ必要があるが、バックエンド未接続のため
+    // 現時点ではフロント側のstateのみを更新する（バックエンド接続後にAPI呼び出しを追加する）
     setTodos((prevTodos) =>
       prevTodos.map((todo) =>
         todo.id === todoId
@@ -299,51 +321,7 @@ export default function CareHomePage() {
     );
   };
 
-  const handleToggleSchedule = (scheduleId: string) => {
-    setSchedules((prevSchedules) =>
-      prevSchedules.map((schedule) =>
-        schedule.id === scheduleId
-          ? { ...schedule, is_completed: !schedule.is_completed }
-          : schedule
-      )
-    );
-  };
-
-  const onSubmitSchedule = (values: ScheduleFormValues) => {
-    if (editingScheduleId) {
-      // 編集モード：本来はPATCH /api/schedules/:scheduleIdを呼ぶ必要があるが、
-      // バックエンド未接続のため現時点ではフロント側のstateのみを更新する
-      setSchedules((prevSchedules) =>
-        prevSchedules.map((schedule) =>
-          schedule.id === editingScheduleId
-            ? {
-                ...schedule,
-                title: values.title,
-                scheduled_content: values.scheduledContent || null,
-                scheduled_date: values.scheduledDate,
-              }
-            : schedule
-        )
-      );
-    } else {
-      const newSchedule: Schedule = {
-        // eslint-disable-next-line react-hooks/purity
-        id: `schedule-${Date.now()}`, // ※仮のID。本来はバックエンドが発行するUUIDを使う
-        pet_id: pet?.id ?? "",
-        title: values.title,
-        scheduled_content: values.scheduledContent || null,
-        scheduled_date: values.scheduledDate,
-        is_completed: false,
-        created_at: new Date().toISOString(),
-      };
-      setSchedules((prevSchedules) => [...prevSchedules, newSchedule]);
-    }
-
-    resetScheduleForm();
-    setEditingScheduleId(null);
-    setIsScheduleModalOpen(false);
-  };
-
+  // editingTodoIdの有無で「新規追加」か「既存の更新」かを分岐する
   const onSubmitTodo = (values: TodoFormValues) => {
     if (editingTodoId) {
       // 編集モード：本来はPATCH /api/todos/:todoIdを呼ぶ必要があるが、
@@ -356,6 +334,10 @@ export default function CareHomePage() {
         )
       );
     } else {
+      // 新規追加モード
+      // ★注記：react-hooks/purity が、イベントハンドラ内のDate.now()呼び出しを
+      // レンダリング中の呼び出しと誤検知する既知の問題のため、id行のみ無効化する。
+      // 参考：https://github.com/facebook/react/issues/34834
       const newTodo: Todo = {
         // eslint-disable-next-line react-hooks/purity
         id: `todo-${Date.now()}`, // ※仮のID。本来はバックエンドが発行するUUIDを使う
@@ -377,6 +359,76 @@ export default function CareHomePage() {
     setIsTodoModalOpen(false);
   };
 
+  // ------------------------------------------------------------
+  // 予定（Schedule）関連のイベントハンドラ
+  // ------------------------------------------------------------
+
+  const handleStartEditSchedule = (schedule: Schedule) => {
+    setEditingScheduleId(schedule.id);
+    resetScheduleForm({
+      title: schedule.title,
+      scheduledContent: schedule.scheduled_content ?? "",
+      scheduledDate: schedule.scheduled_date,
+    });
+    setIsScheduleModalOpen(true);
+  };
+
+  const handleToggleSchedule = (scheduleId: string) => {
+    // 本来はPATCH /api/schedules/:scheduleIdを呼ぶ必要があるが、バックエンド未接続のため
+    // 現時点ではフロント側のstateのみを更新する（バックエンド接続後にAPI呼び出しを追加する）
+    setSchedules((prevSchedules) =>
+      prevSchedules.map((schedule) =>
+        schedule.id === scheduleId
+          ? { ...schedule, is_completed: !schedule.is_completed }
+          : schedule
+      )
+    );
+  };
+
+  // editingScheduleIdの有無で「新規追加」か「既存の更新」かを分岐する
+  const onSubmitSchedule = (values: ScheduleFormValues) => {
+    if (editingScheduleId) {
+      // 編集モード：本来はPATCH /api/schedules/:scheduleIdを呼ぶ必要があるが、
+      // バックエンド未接続のため現時点ではフロント側のstateのみを更新する
+      setSchedules((prevSchedules) =>
+        prevSchedules.map((schedule) =>
+          schedule.id === editingScheduleId
+            ? {
+                ...schedule,
+                title: values.title,
+                scheduled_content: values.scheduledContent || null,
+                scheduled_date: values.scheduledDate,
+              }
+            : schedule
+        )
+      );
+    } else {
+      // 新規追加モード
+      // ★注記：react-hooks/purity が、イベントハンドラ内のDate.now()呼び出しを
+      // レンダリング中の呼び出しと誤検知する既知の問題のため、id行のみ無効化する。
+      // 参考：https://github.com/facebook/react/issues/34834
+      const newSchedule: Schedule = {
+        // eslint-disable-next-line react-hooks/purity
+        id: `schedule-${Date.now()}`, // ※仮のID。本来はバックエンドが発行するUUIDを使う
+        pet_id: pet?.id ?? "",
+        title: values.title,
+        scheduled_content: values.scheduledContent || null,
+        scheduled_date: values.scheduledDate,
+        is_completed: false,
+        created_at: new Date().toISOString(),
+      };
+      setSchedules((prevSchedules) => [...prevSchedules, newSchedule]);
+    }
+
+    resetScheduleForm();
+    setEditingScheduleId(null);
+    setIsScheduleModalOpen(false);
+  };
+
+  // ------------------------------------------------------------
+  // 削除（ToDo・予定共通）
+  // ------------------------------------------------------------
+
   // 本来はDELETE /api/todos/:todoId または DELETE /api/schedules/:scheduleId を呼ぶ必要があるが、
   // バックエンド未接続のため現時点ではフロント側のstateのみを更新する
   const handleConfirmDelete = () => {
@@ -395,8 +447,11 @@ export default function CareHomePage() {
     setDeleteTarget(null);
   };
 
+  // ------------------------------------------------------------
+  // データ取得（ステップ1：土台作り）
+  // ------------------------------------------------------------
+
   useEffect(() => {
-    // ★追加：ステップ1（データ取得の土台作り）
     // ① GET /api/profiles/me で pet_id を取得
     // ② pet_id が null の場合（DB設計書の「状態B：未ペアリング」）は UI-001 へリダイレクト
     //    本来は Next.js Middleware が担う想定だが、未実装の可能性も考慮しこの画面側でも軽くガードする
@@ -444,11 +499,75 @@ export default function CareHomePage() {
     fetchInitialData();
   }, [router]);
 
+  // ------------------------------------------------------------
+  // マウント完了フラグ（ハイドレーションミスマッチ対策）
+  // ------------------------------------------------------------
+
   useEffect(() => {
     // マウント完了をフラグで示すだけにする（cascading render警告を回避）
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
   }, []);
+
+  // ------------------------------------------------------------
+  // Supabase Realtime：todosテーブルの変更を監視
+  // ------------------------------------------------------------
+
+  useEffect(() => {
+    // ★【最重要】バックエンドからの指示通り、変更通知を受け取った際は再fetchせず、
+    // payload.new / payload.old を使ってstateを直接更新する（再fetchはキャッシュ競合の原因になるため禁止）。
+    // pet.idが確定する前にフィルタを組み立てると意味のないチャンネルになるため、
+    // pet?.id が存在する場合のみリスナーを登録する。
+    if (!pet?.id) return;
+
+    const channel = supabase
+      .channel(`todos-changes-${pet.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "todos",
+          filter: `pet_id=eq.${pet.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const newTodo = payload.new as Todo;
+            setTodos((prevTodos) => {
+              // 同じIDが既に存在する場合は重複追加しない（自分自身の操作分との重複防止）
+              if (prevTodos.some((todo) => todo.id === newTodo.id)) {
+                return prevTodos;
+              }
+              return [...prevTodos, newTodo];
+            });
+          } else if (payload.eventType === "UPDATE") {
+            const updatedTodo = payload.new as Todo;
+            setTodos((prevTodos) =>
+              prevTodos.map((todo) =>
+                todo.id === updatedTodo.id ? updatedTodo : todo
+              )
+            );
+          } else if (payload.eventType === "DELETE") {
+            const deletedTodo = payload.old as Todo;
+            setTodos((prevTodos) =>
+              prevTodos.filter((todo) => todo.id !== deletedTodo.id)
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    // ★重要：コンポーネントが画面から消える時（クリーンアップ時）に、
+    // 必ずチャンネルの登録を解除する。これを忘れると、画面を何度も開閉した際に
+    // 同じイベントを複数回受け取ってしまう不具合の原因になる
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [pet?.id]);
+
+  // ------------------------------------------------------------
+  // 早期return（ローディング・エラー）
+  // ------------------------------------------------------------
 
   if (isLoading) {
     return (
@@ -466,6 +585,10 @@ export default function CareHomePage() {
     );
   }
 
+  // ------------------------------------------------------------
+  // 本体UI
+  // ------------------------------------------------------------
+
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-[#FAF8F6]">
       <Header
@@ -482,11 +605,11 @@ export default function CareHomePage() {
       />
 
       <main className="flex-1 px-6 py-6">
-        {/* ★追加：今日のお世話ToDoチェックリスト */}
+        {/* 今日のお世話ToDoチェックリスト */}
         <section className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-[#6E5849]">
-            今日のお世話
+              今日のお世話
             </h2>
             <button
               type="button"
@@ -500,6 +623,7 @@ export default function CareHomePage() {
               ＋ToDoを追加する
             </button>
           </div>
+
           {todos.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               今日のToDoはまだ登録されていません
@@ -527,7 +651,7 @@ export default function CareHomePage() {
           )}
         </section>
 
-        {/* ★追加：今後の予定一覧 */}
+        {/* 今後の予定一覧 */}
         <section className="mt-6 flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-[#6E5849]">
@@ -543,7 +667,7 @@ export default function CareHomePage() {
                   scheduledDate: "",
                 });
                 setIsScheduleModalOpen(true);
-              }}  
+              }}
               className="flex min-h-11 items-center gap-1 rounded-lg bg-[#FBE9DD] px-2.5 text-xs font-medium text-[#993C1D]"
             >
               ＋予定を追加する
@@ -561,7 +685,7 @@ export default function CareHomePage() {
                   key={schedule.id}
                   title={schedule.title}
                   content={schedule.scheduled_content}
-                  // ★isMountedガード：マウント前（サーバー側プリレンダリング時）は
+                  // isMountedガード：マウント前（サーバー側プリレンダリング時）は
                   // new Date()を使わず空文字にし、ハイドレーションミスマッチを防ぐ
                   daysUntilLabel={
                     isMounted
@@ -579,12 +703,13 @@ export default function CareHomePage() {
                   }
                   onEdit={() => handleStartEditSchedule(schedule)}
                 />
-             ))}
+              ))}
             </div>
           )}
         </section>
       </main>
 
+      {/* ToDo追加・編集用のModal */}
       <Modal
         open={isTodoModalOpen}
         onOpenChange={(open) => {
@@ -613,6 +738,7 @@ export default function CareHomePage() {
         </form>
       </Modal>
 
+      {/* 予定追加・編集用のModal */}
       <Modal
         open={isScheduleModalOpen}
         onOpenChange={(open) => {
@@ -654,7 +780,7 @@ export default function CareHomePage() {
         </form>
       </Modal>
 
-      {/* ★追加：削除確認用のModal（ToDo・予定共通） */}
+      {/* 削除確認用のModal（ToDo・予定共通） */}
       <Modal
         open={deleteTarget !== null}
         onOpenChange={(open) => {
@@ -686,7 +812,7 @@ export default function CareHomePage() {
         }
       />
 
-      {/* ★追加：画面下部の共通ナビゲーション */}
+      {/* 画面下部の共通ナビゲーション */}
       <BottomNavigation />
     </div>
   );
