@@ -62,6 +62,10 @@ const petSchema = z.object({
 });
 
 const registerSchema = z.object({
+  displayName: z
+    .string()
+    .min(1, "お名前を入力してください")
+    .max(50, "50文字以内で入力してください"),
   email: z
     .string()
     .min(1, "メールアドレスを入力してください")
@@ -106,6 +110,7 @@ export default function RegisterPage() {
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
+      displayName: "",
       email: "",
       password: "",
       pets: inviteToken ? [] : [EMPTY_PET],
@@ -204,6 +209,13 @@ export default function RegisterPage() {
             <h2 className="text-sm font-semibold text-[#6E5849]">
               アカウント情報
             </h2>
+            <InputField
+              label="お名前"
+              required
+              placeholder="例：花子"
+              {...register("displayName")}
+              error={errors.displayName?.message}
+            />
             <InputField
               label="メールアドレス"
               required

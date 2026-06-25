@@ -7,6 +7,7 @@ import { BottomNavigation } from "@/components/common/BottomNavigation";
 import { EmergencyCallButton } from "@/components/common/EmergencyCallButton";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
+import { TodoCard } from "./_components/TodoCard";
 import { apiFetch, ApiError } from "@/lib/api-client";
 
 type Profile = {
@@ -31,6 +32,17 @@ type Pet = {
   hospital_address: string | null;
   hospital_card_image_url: string | null;
   insurance_card_image_url: string | null;
+  created_at: string;
+};
+
+type Todo = {
+  id: string;
+  pet_id: string;
+  task_name: string;
+  is_completed: boolean;
+  completed_by_id: string | null;
+  completed_at: string | null;
+  todo_date: string;
   created_at: string;
 };
 
@@ -61,6 +73,39 @@ const MOCK_PET: Pet = {
   insurance_card_image_url: null,
   created_at: "2026-06-01T00:00:00.000Z",
 };
+
+const MOCK_TODOS: Todo[] = [
+  {
+    id: "todo-1",
+    pet_id: "mock-pet-id",
+    task_name: "朝ごはん　7時",
+    is_completed: true,
+    completed_by_id: "mock-profile-id",
+    completed_at: "2026-06-24T08:00:00.000Z",
+    todo_date: "2026-06-24",
+    created_at: "2026-06-24T07:00:00.000Z",
+  },
+  {
+    id: "todo-2",
+    pet_id: "mock-pet-id",
+    task_name: "フィラリア薬（朝食後）",
+    is_completed: false,
+    completed_by_id: null,
+    completed_at: null,
+    todo_date: "2026-06-24",
+    created_at: "2026-06-24T07:00:00.000Z",
+  },
+  {
+    id: "todo-3",
+    pet_id: "mock-pet-id",
+    task_name: "お散歩　8時半",
+    is_completed: false,
+    completed_by_id: null,
+    completed_at: null,
+    todo_date: "2026-06-24",
+    created_at: "2026-06-24T07:00:00.000Z",
+  },
+];
 // ▲▲▲ 動作確認用モックデータここまで ▲▲▲
 
 // ▼ 動作確認用フラグ：バックエンド接続後は false に変更、または関連コードを削除すること
@@ -78,14 +123,34 @@ function formatDateLabel(date: Date): string {
 export default function CareHomePage() {
   const router = useRouter();
 
-  // ※ 現時点ではpet_idの判定にのみ使用しJSXでは未使用だが、
-  // notification_time・line_user_id等を今後の機能（UI-005設定画面連携等）で使う予定のため保持する
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   const [pet, setPet] = useState<Pet | null>(null);
+  const [todos, setTodos] = useState<Todo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // ★追加：ToDoのチェック状態を切り替える処理
+  // 本来はPATCH /api/todos/:todoIdを呼ぶ必要があるが、バックエンド未接続のため
+  // 現時点ではフロント側のstateのみを更新する（バックエンド接続後にAPI呼び出しを追加する）
+  const handleToggleTodo = (todoId: string) => {
+    setTodos((prevTodos) =>
+      prevTodos.map((todo) =>
+        todo.id === todoId
+          ? {
+              ...todo,
+              is_completed: !todo.is_completed,
+              // ※本来はバックエンドがauth.uid()から自動付与するため、
+              // フロントから明示的に送信する必要はない（API設計書準拠）。
+              // ここではモック表示用に自分のprofile.idを仮で入れている
+              completed_by_id: !todo.is_completed
+                ? (profile?.id ?? null)
+                : null,
+            }
+          : todo
+      )
+    );
+  };
 
   useEffect(() => {
     // ★追加：ステップ1（データ取得の土台作り）
@@ -103,6 +168,7 @@ export default function CareHomePage() {
         await new Promise((resolve) => setTimeout(resolve, 300)); // ローディング表示の確認用に少し待たせる
         setProfile(MOCK_PROFILE);
         setPet(MOCK_PET);
+        setTodos(MOCK_TODOS);
         setIsLoading(false);
         return;
       }
@@ -172,7 +238,31 @@ export default function CareHomePage() {
       />
 
       <main className="flex-1 px-6 py-6">
-        {/* TODO：ステップ2でToDo一覧・予定一覧のUIをここに追加 */}
+        {/* ★追加：今日のお世話ToDoチェックリスト */}
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-[#6E5849]">
+            今日のお世話
+          </h2>
+          {todos.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              今日のToDoはまだ登録されていません
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {todos.map((todo) => (
+                <TodoCard
+                  key={todo.id}
+                  taskName={todo.task_name}
+                  isCompleted={todo.is_completed}
+                  completedById={todo.completed_by_id}
+                  onToggle={() => handleToggleTodo(todo.id)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* TODO：今後の予定一覧のUIをここに追加 */}
       </main>
 
       {/* ★追加：画面下部の共通ナビゲーション */}
