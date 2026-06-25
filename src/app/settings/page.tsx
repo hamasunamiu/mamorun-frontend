@@ -121,7 +121,7 @@ export default function SettingsPage() {
             ⭐ プレミアムプラン
           </p>
           <p className="text-sm text-gray-500 leading-relaxed mb-3">
-            AI相談が無制限・LINE通知が使えるようになります。
+            AI相談が無制限・LINE通知が使えるようになります。月額500円（税込）
           </p>
 
           {/* アップグレードボタン（未加入時のみ） */}
@@ -144,13 +144,25 @@ export default function SettingsPage() {
                 📲 LINE連携
               </p>
               {isLineLinked ? (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-green-600">✅ 連携済み</span>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-green-600">✅ 連携済み</span>
+                    <button
+                      className="text-xs text-gray-400 underline"
+                      onClick={() => setIsLineUnlinkModalOpen(true)}
+                    >
+                      連携解除
+                    </button>
+                  </div>
+                  {/* デモ用テスト送信ボタン */}
                   <button
-                    className="text-xs text-gray-400 underline"
-                    onClick={() => setIsLineUnlinkModalOpen(true)}
+                    className="text-xs text-gray-400 border border-[#e0d6ce] rounded-lg py-1.5 px-3 w-full"
+                    onClick={() => {
+                      // TODO: POST /api/notifications/line/remind
+                      console.log("LINEテスト送信");
+                    }}
                   >
-                    連携解除
+                    📨 LINEテスト送信（デモ用）
                   </button>
                 </div>
               ) : (
