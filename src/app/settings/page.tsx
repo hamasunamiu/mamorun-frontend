@@ -6,30 +6,47 @@ import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { Modal } from "@/components/common/Modal";
 
 export default function SettingsPage() {
-  // 通知タイミングの選択状態
   const [notificationTime, setNotificationTime] = useState<"morning" | "night">(
     "morning",
   );
-  // プレミアムプランの状態（後でAPIから取得）
   const [isPremium, setIsPremium] = useState(false);
-  // ペット追加モーダル
+  const [isLineLinked, setIsLineLinked] = useState(false);
   const [isPetModalOpen, setIsPetModalOpen] = useState(false);
-  // 招待URLモーダル
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  // ログアウト確認モーダル
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [isLineUnlinkModalOpen, setIsLineUnlinkModalOpen] = useState(false);
+  const [isPremiumCancelModalOpen, setIsPremiumCancelModalOpen] =
+    useState(false);
 
-  // ログアウト処理（後でAPI繋ぎ込み）
   const handleLogout = async () => {
     // TODO: Supabase Auth signOut
     console.log("ログアウト");
     setIsLogoutModalOpen(false);
   };
 
-  // プレミアム購入（後でAPI繋ぎ込み）
   const handleUpgrade = async () => {
-    // TODO: POST /api/stripe/checkout → Stripe CheckoutページへリダイレクトURL取得
+    // TODO: POST /api/stripe/checkout → Stripe Checkoutページへリダイレクト
     console.log("プレミアム購入");
+  };
+
+  const handleLineLink = async () => {
+    // TODO: LINE Login → PATCH /api/profiles/me { line_user_id }
+    console.log("LINE連携");
+    setIsLineLinked(true); // ダミー
+  };
+
+  const handleLineUnlink = async () => {
+    // TODO: PATCH /api/profiles/me { line_user_id: null }
+    console.log("LINE連携解除");
+    setIsLineLinked(false); // ダミー
+    setIsLineUnlinkModalOpen(false);
+  };
+
+  const handlePremiumCancel = async () => {
+    // TODO: POST /api/stripe/cancel
+    console.log("プレミアム解除");
+    setIsPremium(false); // ダミー
+    setIsPremiumCancelModalOpen(false);
   };
 
   return (
@@ -48,7 +65,6 @@ export default function SettingsPage() {
           </div>
           <div className="flex items-center justify-between py-1.5">
             <span className="text-sm text-gray-500">プラン</span>
-            {/* is_premiumで表示を切り替え */}
             {isPremium ? (
               <span className="bg-[#FAECE7] border border-[#D85A30] text-[#993C1D] text-xs font-medium px-3 py-1 rounded-full">
                 プレミアムプラン
@@ -58,38 +74,6 @@ export default function SettingsPage() {
                 無料プラン
               </span>
             )}
-          </div>
-        </div>
-
-        {/* LINE通知タイミング */}
-        <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
-          <p className="text-xs font-medium text-[#993C1D] mb-3">
-            🔔 LINE通知タイミング
-          </p>
-          <p className="text-xs text-gray-500 mb-2">
-            リマインドを受け取る時間帯
-          </p>
-          <div className="flex gap-2">
-            <button
-              className={`flex-1 py-2.5 rounded-lg border text-sm font-medium ${
-                notificationTime === "morning"
-                  ? "border-[#D85A30] bg-[#FAECE7] text-[#993C1D]"
-                  : "border-[#e0d6ce] bg-[#FFF9F5] text-gray-500"
-              }`}
-              onClick={() => setNotificationTime("morning")}
-            >
-              朝（08:00）
-            </button>
-            <button
-              className={`flex-1 py-2.5 rounded-lg border text-sm font-medium ${
-                notificationTime === "night"
-                  ? "border-[#D85A30] bg-[#FAECE7] text-[#993C1D]"
-                  : "border-[#e0d6ce] bg-[#FFF9F5] text-gray-500"
-              }`}
-              onClick={() => setNotificationTime("night")}
-            >
-              夜（20:00）
-            </button>
           </div>
         </div>
 
@@ -131,7 +115,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* プレミアムプラン */}
+        {/* プレミアムプラン（LINE連携・通知設定・解約含む） */}
         <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
           <p className="text-xs font-medium text-[#993C1D] mb-3">
             ⭐ プレミアムプラン
@@ -139,15 +123,92 @@ export default function SettingsPage() {
           <p className="text-sm text-gray-500 leading-relaxed mb-3">
             AI相談が無制限・LINE通知が使えるようになります。
           </p>
-          <PrimaryButton
-            className="w-full"
-            onClick={handleUpgrade}
-            disabled={isPremium}
+
+          {/* アップグレードボタン（未加入時のみ） */}
+          {!isPremium && (
+            <PrimaryButton
+              className="w-full bg-[#D85A30] hover:bg-[#D85A30] hover:opacity-85 mb-3"
+              onClick={handleUpgrade}
+            >
+              👑 プレミアムにアップグレード
+            </PrimaryButton>
+          )}
+
+          {/* プレミアム会員向けコンテンツ（グレーアウト制御） */}
+          <div
+            className={`flex flex-col gap-3 ${!isPremium ? "opacity-40 pointer-events-none" : ""}`}
           >
-            {isPremium
-              ? "✅ プレミアム会員です"
-              : "👑 プレミアムにアップグレード"}
-          </PrimaryButton>
+            {/* LINE連携 */}
+            <div className="border-t border-[#f0e8e0] pt-3">
+              <p className="text-xs font-medium text-gray-600 mb-2">
+                📲 LINE連携
+              </p>
+              {isLineLinked ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-green-600">✅ 連携済み</span>
+                  <button
+                    className="text-xs text-gray-400 underline"
+                    onClick={() => setIsLineUnlinkModalOpen(true)}
+                  >
+                    連携解除
+                  </button>
+                </div>
+              ) : (
+                <PrimaryButton
+                  className="w-full bg-[#06C755] hover:bg-[#06C755] hover:opacity-85 text-white"
+                  onClick={handleLineLink}
+                >
+                  LINEと連携する
+                </PrimaryButton>
+              )}
+            </div>
+
+            {/* 通知タイミング（LINE連携済みの場合のみ表示） */}
+            {isLineLinked && (
+              <div className="border-t border-[#f0e8e0] pt-3">
+                <p className="text-xs font-medium text-gray-600 mb-2">
+                  🔔 LINE通知タイミング
+                </p>
+                <p className="text-xs text-gray-500 mb-2">
+                  リマインドを受け取る時間帯
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    className={`flex-1 py-2.5 rounded-lg border text-sm font-medium ${
+                      notificationTime === "morning"
+                        ? "border-[#D85A30] bg-[#FAECE7] text-[#993C1D]"
+                        : "border-[#e0d6ce] bg-[#FFF9F5] text-gray-500"
+                    }`}
+                    onClick={() => setNotificationTime("morning")}
+                  >
+                    朝（08:00）
+                  </button>
+                  <button
+                    className={`flex-1 py-2.5 rounded-lg border text-sm font-medium ${
+                      notificationTime === "night"
+                        ? "border-[#D85A30] bg-[#FAECE7] text-[#993C1D]"
+                        : "border-[#e0d6ce] bg-[#FFF9F5] text-gray-500"
+                    }`}
+                    onClick={() => setNotificationTime("night")}
+                  >
+                    夜（20:00）
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* プレミアム解除（プレミアム会員のみ） */}
+            {isPremium && (
+              <div className="border-t border-[#f0e8e0] pt-3">
+                <button
+                  className="text-xs text-gray-400 underline"
+                  onClick={() => setIsPremiumCancelModalOpen(true)}
+                >
+                  プレミアムプランを解約する
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* ログアウト */}
@@ -210,6 +271,54 @@ export default function SettingsPage() {
               }}
             >
               URLを発行する
+            </PrimaryButton>
+          </div>
+        }
+      />
+
+      {/* LINE連携解除モーダル */}
+      <Modal
+        open={isLineUnlinkModalOpen}
+        onOpenChange={(open) => setIsLineUnlinkModalOpen(open)}
+        title="LINE連携を解除しますか？"
+        description="解除するとLINE通知が届かなくなります。"
+        footer={
+          <div className="flex gap-2 w-full">
+            <button
+              className="flex-1 py-2 rounded-lg border border-[#e0d6ce] text-sm text-gray-500"
+              onClick={() => setIsLineUnlinkModalOpen(false)}
+            >
+              キャンセル
+            </button>
+            <PrimaryButton
+              className="flex-1 bg-red-500 hover:bg-red-500 hover:opacity-85"
+              onClick={handleLineUnlink}
+            >
+              解除する
+            </PrimaryButton>
+          </div>
+        }
+      />
+
+      {/* プレミアム解約モーダル */}
+      <Modal
+        open={isPremiumCancelModalOpen}
+        onOpenChange={(open) => setIsPremiumCancelModalOpen(open)}
+        title="プレミアムプランを解約しますか？"
+        description="解約するとLINE通知・AI無制限が使えなくなります。"
+        footer={
+          <div className="flex gap-2 w-full">
+            <button
+              className="flex-1 py-2 rounded-lg border border-[#e0d6ce] text-sm text-gray-500"
+              onClick={() => setIsPremiumCancelModalOpen(false)}
+            >
+              キャンセル
+            </button>
+            <PrimaryButton
+              className="flex-1 bg-red-500 hover:bg-red-500 hover:opacity-85"
+              onClick={handlePremiumCancel}
+            >
+              解約する
             </PrimaryButton>
           </div>
         }
