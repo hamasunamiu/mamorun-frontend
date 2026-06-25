@@ -620,7 +620,7 @@ export default function CareHomePage() {
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-[#FAF8F6]">
       <Header
         petName={pet?.name}
-        dateLabel={isMounted ? formatDateLabel(new Date()) : undefined}
+        petSpecies={pet?.species}
         onPetSwitch={() => {
           // TODO: 複数ペット一覧取得APIの仕様確定後に実装
           if (petList.length > 1) {
@@ -635,11 +635,17 @@ export default function CareHomePage() {
       />
 
       <main className="flex-1 px-6 py-6">
+        {isMounted && (
+          <p className="mb-5 text-lg font-semibold text-[#9E7654]">
+            {formatDateLabel(new Date())}
+          </p>
+        )}
+
         {/* 今日のお世話ToDoチェックリスト */}
         <section className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-[#6E5849]">
-              今日のお世話
+            <h2 className="text-md font-semibold text-[#6E5849]">
+              🐾 今日のお世話
             </h2>
             <button
               type="button"
@@ -648,9 +654,9 @@ export default function CareHomePage() {
                 resetTodoForm({ taskName: "" });
                 setIsTodoModalOpen(true);
               }}
-              className="flex min-h-11 items-center gap-1 rounded-lg bg-[#FBE9DD] px-2.5 text-xs font-medium text-[#993C1D]"
+              className="flex min-h-11 items-center gap-1 rounded-lg border border-[#D8C0A8] px-2.5 text-xs font-bold text-[#993C1D]"
             >
-              ＋ToDoを追加する
+              お世話を追加
             </button>
           </div>
 
@@ -684,8 +690,8 @@ export default function CareHomePage() {
         {/* 今後の予定一覧 */}
         <section className="mt-6 flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-[#6E5849]">
-              今後の予定
+            <h2 className="text-md font-semibold text-[#6E5849]">
+              🗓️ 今後の予定
             </h2>
             <button
               type="button"
@@ -698,9 +704,9 @@ export default function CareHomePage() {
                 });
                 setIsScheduleModalOpen(true);
               }}
-              className="flex min-h-11 items-center gap-1 rounded-lg bg-[#FBE9DD] px-2.5 text-xs font-medium text-[#993C1D]"
+              className="flex min-h-11 items-center gap-1 rounded-lg border border-[#D8C0A8] px-2.5 text-xs font-bold text-[#993C1D]"
             >
-              ＋予定を追加する
+              予定を追加
             </button>
           </div>
 
