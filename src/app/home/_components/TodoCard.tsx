@@ -1,14 +1,19 @@
 "use client";
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 type TodoCardProps = {
-  /** タスク名 */
   taskName: string;
-  /** 完了フラグ */
   isCompleted: boolean;
-  /** 完了者のユーザーID（表示名取得手段が未確定なため、現時点ではIDの一部のみ仮表示） */
   completedById: string | null;
-  /** チェックボックスタップ時のコールバック */
   onToggle: () => void;
+  onDelete: () => void;
+  onEdit: () => void;
 };
 
 export function TodoCard({
@@ -16,6 +21,8 @@ export function TodoCard({
   isCompleted,
   completedById, //あとで差し替え
   onToggle,
+  onDelete,
+  onEdit,
 }: TodoCardProps) {
   return (
     <div className="flex min-h-11 items-center justify-between gap-3 rounded-2xl bg-white p-4">
@@ -63,15 +70,44 @@ export function TodoCard({
         </span>
       </div>
 
-      {/* ★完了者表示：display_nameの送信先・取得方法が未確定のため、
+      <div className="flex shrink-0 items-center gap-2">
+        {/* ★完了者表示：display_nameの送信先・取得方法が未確定のため、
           現時点では人型アイコン＋IDの先頭4文字のみの仮表示。
           バックエンドでdisplay_nameカラム追加後、completed_by_name等に差し替える予定 */}
-      {isCompleted && completedById && (
-        <div className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-          <span aria-hidden="true">👤</span>
-          <span>{completedById.slice(0, 4)}</span>
-        </div>
-      )}
+        {isCompleted && completedById && (
+          <div className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+            <span aria-hidden="true">👤</span>
+            <span>{completedById.slice(0, 4)}</span>
+          </div>
+        )}
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label={`${taskName}のメニューを開く`}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground"
+            >
+              <svg
+                viewBox="0 0 16 16"
+                className="h-4 w-4"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <circle cx="8" cy="2.5" r="1.3" />
+                <circle cx="8" cy="8" r="1.3" />
+                <circle cx="8" cy="13.5" r="1.3" />
+              </svg>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={onEdit}>編集</DropdownMenuItem>
+            <DropdownMenuItem onClick={onDelete} className="text-destructive">
+              削除
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   );
 }

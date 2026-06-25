@@ -2,13 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Header } from "@/components/common/Header";
 import { BottomNavigation } from "@/components/common/BottomNavigation";
 import { EmergencyCallButton } from "@/components/common/EmergencyCallButton";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
-import { TodoCard } from "./_components/TodoCard";
+import { Modal } from "@/components/common/Modal";
+import { InputField } from "@/components/common/InputField";
+import { TextAreaField } from "@/components/common/TextAreaField";
+import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { apiFetch, ApiError } from "@/lib/api-client";
+import { TodoCard } from "./_components/TodoCard";
+import { ScheduleCard } from "./_components/ScheduleCard";
 
 type Profile = {
   id: string;
@@ -46,6 +54,55 @@ type Todo = {
   created_at: string;
 };
 
+type Schedule = {
+  id: string;
+  pet_id: string;
+  title: string;
+  scheduled_content: string | null;
+  scheduled_date: string;
+  is_completed: boolean;
+  created_at: string;
+};
+
+const scheduleFormSchema = z.object({
+  title: z
+    .string()
+    .min(1, "タイトルを入力してください")
+    .max(255, "255文字以内で入力してください"),
+  scheduledContent: z
+    .string()
+    .max(1000, "1000文字以内で入力してください")
+    .optional()
+    .or(z.literal("")),
+  scheduledDate: z
+    .string()
+    .min(1, "予定日を入力してください")
+    .refine(
+      (val) => {
+        const inputDate = new Date(val + "T00:00:00");
+        const today = new Date();
+        const todayMidnight = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          today.getDate()
+        );
+        return inputDate >= todayMidnight;
+      },
+      { message: "予定日に過去の日付は設定できません" }
+    ),
+});
+
+type ScheduleFormValues = z.infer<typeof scheduleFormSchema>;
+
+const todoFormSchema = z.object({
+  taskName: z
+    .string()
+    .min(1, "タスク名を入力してください")
+    .max(250, "250文字以内で入力してください"),
+});
+
+type TodoFormValues = z.infer<typeof todoFormSchema>;
+
 // ▼▼▼ 動作確認用モックデータ（ステップ2：静的UI構築用） ▼▼▼
 // バックエンド接続後、このブロックと下記useEffect内の切り替えは必ず削除し、
 // 元のapiFetch呼び出しのみに戻すこと
@@ -81,14 +138,14 @@ const MOCK_TODOS: Todo[] = [
     task_name: "朝ごはん　7時",
     is_completed: true,
     completed_by_id: "mock-profile-id",
-    completed_at: "2026-06-24T08:00:00.000Z",
+    completed_at: "2026-06-24T07:00:00.000Z",
     todo_date: "2026-06-24",
     created_at: "2026-06-24T07:00:00.000Z",
   },
   {
     id: "todo-2",
     pet_id: "mock-pet-id",
-    task_name: "フィラリア薬（朝食後）",
+    task_name: "お散歩　8時半",
     is_completed: false,
     completed_by_id: null,
     completed_at: null,
@@ -98,12 +155,33 @@ const MOCK_TODOS: Todo[] = [
   {
     id: "todo-3",
     pet_id: "mock-pet-id",
-    task_name: "お散歩　8時半",
+    task_name: "目薬（お散歩の後）",
     is_completed: false,
     completed_by_id: null,
     completed_at: null,
     todo_date: "2026-06-24",
     created_at: "2026-06-24T07:00:00.000Z",
+  },
+];
+
+const MOCK_SCHEDULES: Schedule[] = [
+  {
+    id: "schedule-1",
+    pet_id: "mock-pet-id",
+    title: "狂犬病ワクチン",
+    scheduled_content: null,
+    scheduled_date: "2026-07-01",
+    is_completed: false,
+    created_at: "2025-07-1T00:00:00.000Z",
+  },
+  {
+    id: "schedule-2",
+    pet_id: "mock-pet-id",
+    title: "フィラリア薬",
+    scheduled_content: "毎月15日に投与。体重5kgのため1錠。",
+    scheduled_date: "2026-07-15",
+    is_completed: false,
+    created_at: "2026-06-15T00:00:00.000Z",
   },
 ];
 // ▲▲▲ 動作確認用モックデータここまで ▲▲▲
@@ -120,6 +198,23 @@ function formatDateLabel(date: Date): string {
   return `${year}年${month}月${day}日（${weekday}）`;
 }
 
+function formatDaysUntil(scheduledDate: string, today: Date): string {
+  // 時刻部分の差異で日数がズレないよう、両方を「日付のみ」に正規化して比較する
+  const target = new Date(scheduledDate + "T00:00:00");
+  const todayMidnight = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  );
+
+  const diffMs = target.getTime() - todayMidnight.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return "今日";
+  if (diffDays < 0) return "期限切れ";
+  return `あと${diffDays}日`;
+}
+
 export default function CareHomePage() {
   const router = useRouter();
 
@@ -127,12 +222,64 @@ export default function CareHomePage() {
   const [isMounted, setIsMounted] = useState(false);
   const [pet, setPet] = useState<Pet | null>(null);
   const [todos, setTodos] = useState<Todo[]>([]);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [isTodoModalOpen, setIsTodoModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    type: "todo" | "schedule";
+    id: string;
+    name: string;
+  } | null>(null);
+  const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(
+    null
+  );
 
-  // ★追加：ToDoのチェック状態を切り替える処理
-  // 本来はPATCH /api/todos/:todoIdを呼ぶ必要があるが、バックエンド未接続のため
-  // 現時点ではフロント側のstateのみを更新する（バックエンド接続後にAPI呼び出しを追加する）
+  const {
+    register: registerTodo,
+    handleSubmit: handleSubmitTodo,
+    reset: resetTodoForm,
+    formState: { errors: todoErrors },
+  } = useForm<TodoFormValues>({
+    resolver: zodResolver(todoFormSchema),
+    defaultValues: {
+      taskName: "",
+    },
+  });
+
+  const handleStartEditTodo = (todo: Todo) => {
+    setEditingTodoId(todo.id);
+    resetTodoForm({ taskName: todo.task_name });
+    setIsTodoModalOpen(true);
+  };
+
+  const {
+    register: registerSchedule,
+    handleSubmit: handleSubmitSchedule,
+    reset: resetScheduleForm,
+    formState: { errors: scheduleErrors },
+  } = useForm<ScheduleFormValues>({
+    resolver: zodResolver(scheduleFormSchema),
+    defaultValues: {
+      title: "",
+      scheduledContent: "",
+      scheduledDate: "",
+    },
+  });
+
+  // ★追加：予定の編集を開始する処理。フォームに既存の値をセットし、編集モードに切り替える
+  const handleStartEditSchedule = (schedule: Schedule) => {
+    setEditingScheduleId(schedule.id);
+    resetScheduleForm({
+      title: schedule.title,
+      scheduledContent: schedule.scheduled_content ?? "",
+      scheduledDate: schedule.scheduled_date,
+    });
+    setIsScheduleModalOpen(true);
+  };
+
   const handleToggleTodo = (todoId: string) => {
     setTodos((prevTodos) =>
       prevTodos.map((todo) =>
@@ -152,6 +299,102 @@ export default function CareHomePage() {
     );
   };
 
+  const handleToggleSchedule = (scheduleId: string) => {
+    setSchedules((prevSchedules) =>
+      prevSchedules.map((schedule) =>
+        schedule.id === scheduleId
+          ? { ...schedule, is_completed: !schedule.is_completed }
+          : schedule
+      )
+    );
+  };
+
+  const onSubmitSchedule = (values: ScheduleFormValues) => {
+    if (editingScheduleId) {
+      // 編集モード：本来はPATCH /api/schedules/:scheduleIdを呼ぶ必要があるが、
+      // バックエンド未接続のため現時点ではフロント側のstateのみを更新する
+      setSchedules((prevSchedules) =>
+        prevSchedules.map((schedule) =>
+          schedule.id === editingScheduleId
+            ? {
+                ...schedule,
+                title: values.title,
+                scheduled_content: values.scheduledContent || null,
+                scheduled_date: values.scheduledDate,
+              }
+            : schedule
+        )
+      );
+    } else {
+      const newSchedule: Schedule = {
+        // eslint-disable-next-line react-hooks/purity
+        id: `schedule-${Date.now()}`, // ※仮のID。本来はバックエンドが発行するUUIDを使う
+        pet_id: pet?.id ?? "",
+        title: values.title,
+        scheduled_content: values.scheduledContent || null,
+        scheduled_date: values.scheduledDate,
+        is_completed: false,
+        created_at: new Date().toISOString(),
+      };
+      setSchedules((prevSchedules) => [...prevSchedules, newSchedule]);
+    }
+
+    resetScheduleForm();
+    setEditingScheduleId(null);
+    setIsScheduleModalOpen(false);
+  };
+
+  const onSubmitTodo = (values: TodoFormValues) => {
+    if (editingTodoId) {
+      // 編集モード：本来はPATCH /api/todos/:todoIdを呼ぶ必要があるが、
+      // バックエンド未接続のため現時点ではフロント側のstateのみを更新する
+      setTodos((prevTodos) =>
+        prevTodos.map((todo) =>
+          todo.id === editingTodoId
+            ? { ...todo, task_name: values.taskName }
+            : todo
+        )
+      );
+    } else {
+      const newTodo: Todo = {
+        // eslint-disable-next-line react-hooks/purity
+        id: `todo-${Date.now()}`, // ※仮のID。本来はバックエンドが発行するUUIDを使う
+        pet_id: pet?.id ?? "",
+        task_name: values.taskName,
+        is_completed: false,
+        completed_by_id: null,
+        completed_at: null,
+        // ★注記：todo_dateも本来はバックエンドがJST基準で算出するため送信不要（API設計書準拠）。
+        // ここではモック表示用の仮の値として、isMounted後のnew Date()を使う
+        todo_date: isMounted ? new Date().toISOString().slice(0, 10) : "",
+        created_at: new Date().toISOString(),
+      };
+      setTodos((prevTodos) => [...prevTodos, newTodo]);
+    }
+
+    resetTodoForm();
+    setEditingTodoId(null);
+    setIsTodoModalOpen(false);
+  };
+
+  // 本来はDELETE /api/todos/:todoId または DELETE /api/schedules/:scheduleId を呼ぶ必要があるが、
+  // バックエンド未接続のため現時点ではフロント側のstateのみを更新する
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return;
+
+    if (deleteTarget.type === "todo") {
+      setTodos((prevTodos) =>
+        prevTodos.filter((todo) => todo.id !== deleteTarget.id)
+      );
+    } else {
+      setSchedules((prevSchedules) =>
+        prevSchedules.filter((schedule) => schedule.id !== deleteTarget.id)
+      );
+    }
+
+    setDeleteTarget(null);
+  };
+
   useEffect(() => {
     // ★追加：ステップ1（データ取得の土台作り）
     // ① GET /api/profiles/me で pet_id を取得
@@ -169,6 +412,7 @@ export default function CareHomePage() {
         setProfile(MOCK_PROFILE);
         setPet(MOCK_PET);
         setTodos(MOCK_TODOS);
+        setSchedules(MOCK_SCHEDULES);
         setIsLoading(false);
         return;
       }
@@ -240,9 +484,22 @@ export default function CareHomePage() {
       <main className="flex-1 px-6 py-6">
         {/* ★追加：今日のお世話ToDoチェックリスト */}
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-semibold text-[#6E5849]">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-[#6E5849]">
             今日のお世話
-          </h2>
+            </h2>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingTodoId(null);
+                resetTodoForm({ taskName: "" });
+                setIsTodoModalOpen(true);
+              }}
+              className="flex min-h-11 items-center gap-1 rounded-lg bg-[#FBE9DD] px-2.5 text-xs font-medium text-[#993C1D]"
+            >
+              ＋ToDoを追加する
+            </button>
+          </div>
           {todos.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               今日のToDoはまだ登録されていません
@@ -256,14 +513,178 @@ export default function CareHomePage() {
                   isCompleted={todo.is_completed}
                   completedById={todo.completed_by_id}
                   onToggle={() => handleToggleTodo(todo.id)}
+                  onDelete={() =>
+                    setDeleteTarget({
+                      type: "todo",
+                      id: todo.id,
+                      name: todo.task_name,
+                    })
+                  }
+                  onEdit={() => handleStartEditTodo(todo)}
                 />
               ))}
             </div>
           )}
         </section>
 
-        {/* TODO：今後の予定一覧のUIをここに追加 */}
+        {/* ★追加：今後の予定一覧 */}
+        <section className="mt-6 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-[#6E5849]">
+              今後の予定
+            </h2>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingScheduleId(null);
+                resetScheduleForm({
+                  title: "",
+                  scheduledContent: "",
+                  scheduledDate: "",
+                });
+                setIsScheduleModalOpen(true);
+              }}  
+              className="flex min-h-11 items-center gap-1 rounded-lg bg-[#FBE9DD] px-2.5 text-xs font-medium text-[#993C1D]"
+            >
+              ＋予定を追加する
+            </button>
+          </div>
+
+          {schedules.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              今後の予定はまだ登録されていません
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {schedules.map((schedule) => (
+                <ScheduleCard
+                  key={schedule.id}
+                  title={schedule.title}
+                  content={schedule.scheduled_content}
+                  // ★isMountedガード：マウント前（サーバー側プリレンダリング時）は
+                  // new Date()を使わず空文字にし、ハイドレーションミスマッチを防ぐ
+                  daysUntilLabel={
+                    isMounted
+                      ? formatDaysUntil(schedule.scheduled_date, new Date())
+                      : ""
+                  }
+                  isCompleted={schedule.is_completed}
+                  onToggle={() => handleToggleSchedule(schedule.id)}
+                  onDelete={() =>
+                    setDeleteTarget({
+                      type: "schedule",
+                      id: schedule.id,
+                      name: schedule.title,
+                    })
+                  }
+                  onEdit={() => handleStartEditSchedule(schedule)}
+                />
+             ))}
+            </div>
+          )}
+        </section>
       </main>
+
+      <Modal
+        open={isTodoModalOpen}
+        onOpenChange={(open) => {
+          setIsTodoModalOpen(open);
+          if (!open) setEditingTodoId(null);
+        }}
+        title={editingTodoId ? "ToDoを編集する" : "ToDoを追加する"}
+      >
+        <form
+          onSubmit={handleSubmitTodo(onSubmitTodo)}
+          className="flex flex-col gap-4"
+        >
+          <InputField
+            label="タスク名"
+            required
+            placeholder="例：朝ごはん　7時"
+            {...registerTodo("taskName")}
+            error={todoErrors.taskName?.message}
+          />
+          <PrimaryButton
+            type="submit"
+            className="h-12 rounded-2xl bg-[#C69A6B] hover:bg-[#C69A6B] hover:opacity-85"
+          >
+            {editingTodoId ? "更新する" : "追加する"}
+          </PrimaryButton>
+        </form>
+      </Modal>
+
+      <Modal
+        open={isScheduleModalOpen}
+        onOpenChange={(open) => {
+          setIsScheduleModalOpen(open);
+          if (!open) setEditingScheduleId(null);
+        }}
+        title={editingScheduleId ? "予定を編集する" : "予定を追加する"}
+      >
+        <form
+          onSubmit={handleSubmitSchedule(onSubmitSchedule)}
+          className="flex flex-col gap-4"
+        >
+          <InputField
+            label="タイトル"
+            required
+            placeholder="例：フィラリア薬"
+            {...registerSchedule("title")}
+            error={scheduleErrors.title?.message}
+          />
+          <TextAreaField
+            label="予定内容"
+            placeholder="例：毎月15日に投与"
+            {...registerSchedule("scheduledContent")}
+            error={scheduleErrors.scheduledContent?.message}
+          />
+          <InputField
+            label="予定日"
+            required
+            type="date"
+            {...registerSchedule("scheduledDate")}
+            error={scheduleErrors.scheduledDate?.message}
+          />
+          <PrimaryButton
+            type="submit"
+            className="h-12 rounded-2xl bg-[#C69A6B] hover:bg-[#C69A6B] hover:opacity-85"
+          >
+            {editingScheduleId ? "更新する" : "追加する"}
+          </PrimaryButton>
+        </form>
+      </Modal>
+
+      {/* ★追加：削除確認用のModal（ToDo・予定共通） */}
+      <Modal
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="削除しますか？"
+        description={
+          deleteTarget
+            ? `「${deleteTarget.name}」を削除します。この操作は取り消せません。`
+            : undefined
+        }
+        footer={
+          <div className="flex w-full gap-2">
+            <button
+              type="button"
+              onClick={() => setDeleteTarget(null)}
+              className="h-11 flex-1 rounded-2xl border border-border text-sm font-medium text-foreground"
+            >
+              キャンセル
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmDelete}
+              className="h-11 flex-1 rounded-2xl bg-destructive text-sm font-medium text-white"
+            >
+              削除する
+            </button>
+          </div>
+        }
+      />
 
       {/* ★追加：画面下部の共通ナビゲーション */}
       <BottomNavigation />
