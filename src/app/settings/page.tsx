@@ -9,8 +9,8 @@ export default function SettingsPage() {
   const [notificationTime, setNotificationTime] = useState<"morning" | "night">(
     "morning",
   );
-  const [isPremium, setIsPremium] = useState(false);
-  const [isLineLinked, setIsLineLinked] = useState(false);
+  const [isPremium, setIsPremium] = useState(true);
+  const [isLineLinked, setIsLineLinked] = useState(true);
   const [isPetModalOpen, setIsPetModalOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
