@@ -143,6 +143,24 @@ const MOCK_PET: Pet = {
   created_at: "2026-06-01T00:00:00.000Z",
 };
 
+const MOCK_PET_LIST: Pet[] = [
+  MOCK_PET,
+  {
+    id: "mock-pet-id-2",
+    name: "もも",
+    species: "cat",
+    gender: "female",
+    birthday: "2022-09-10",
+    illness: null,
+    hospital_name: "〇〇動物病院",
+    hospital_phone: "0312345678",
+    hospital_address: "東京都渋谷区...",
+    hospital_card_image_url: null,
+    insurance_card_image_url: null,
+    created_at: "2026-06-01T00:00:00.000Z",
+  },
+];
+
 const MOCK_TODOS: Todo[] = [
   {
     id: "todo-1",
@@ -253,6 +271,9 @@ export default function CareHomePage() {
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(
     null
   );
+  const [isPetSwitchModalOpen, setIsPetSwitchModalOpen] = useState(false);
+  const [petList, setPetList] = useState<Pet[]>([]);
+
   // 削除確認Modal用：「何を削除しようとしているか」をtype/id/nameで保持し、
   // ToDo・予定共通の確認Modalを1つだけ用意する
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -447,6 +468,11 @@ export default function CareHomePage() {
     setDeleteTarget(null);
   };
 
+  const handleSwitchPet = (selectedPet: Pet) => {
+    setPet(selectedPet);
+    setIsPetSwitchModalOpen(false);
+  };
+
   // ------------------------------------------------------------
   // データ取得（ステップ1：土台作り）
   // ------------------------------------------------------------
@@ -466,6 +492,7 @@ export default function CareHomePage() {
         await new Promise((resolve) => setTimeout(resolve, 300)); // ローディング表示の確認用に少し待たせる
         setProfile(MOCK_PROFILE);
         setPet(MOCK_PET);
+        setPetList(MOCK_PET_LIST);
         setTodos(MOCK_TODOS);
         setSchedules(MOCK_SCHEDULES);
         setIsLoading(false);
@@ -595,7 +622,10 @@ export default function CareHomePage() {
         petName={pet?.name}
         dateLabel={isMounted ? formatDateLabel(new Date()) : undefined}
         onPetSwitch={() => {
-          // TODO: 複数ペット一覧取得APIの仕様確定後に実装（バックエンドチームに確認依頼中）
+          // TODO: 複数ペット一覧取得APIの仕様確定後に実装
+          if (petList.length > 1) {
+            setIsPetSwitchModalOpen(true);
+          }
         }}
         rightSlot={
           pet?.hospital_phone ? (
@@ -811,6 +841,39 @@ export default function CareHomePage() {
           </div>
         }
       />
+
+      {/* ペット切り替え用のModal（2匹以上の場合に表示）
+          現時点ではMOCK_PET_LISTを使用。複数ペット取得APIの仕様確定後、
+          GET /api/pets相当のレスポンスをpetListにセットするだけで完成する設計 */}
+      <Modal
+        open={isPetSwitchModalOpen}
+        onOpenChange={setIsPetSwitchModalOpen}
+        title="ペットを切り替える"
+      >
+        <div className="flex flex-col gap-2">
+          {petList.map((p) => {
+            const isSelected = p.id === pet?.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => handleSwitchPet(p)}
+                aria-pressed={isSelected}
+                className={`flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium ${
+                  isSelected
+                    ? "border-[#C4956A] bg-[#FBE9DD] text-[#993C1D]"
+                    : "border-border bg-background text-foreground"
+                }`}
+              >
+                <span aria-hidden="true">
+                  {p.species === "dog" ? "🐶" : "🐱"}
+                </span>
+                {p.name}
+              </button>
+            );
+          })}
+        </div>
+      </Modal>
 
       {/* 画面下部の共通ナビゲーション */}
       <BottomNavigation />
