@@ -1,7 +1,18 @@
+"use client";
+import { useState } from "react";
 import { Header } from "@/components/common/Header";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
+import { Modal } from "@/components/common/Modal";
 
 export default function AdminPage() {
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+
+  const handleLogout = async () => {
+    // TODO: Supabase Auth signOut
+    console.log("ログアウト");
+    setIsLogoutModalOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-[#FFF9F5]">
       <Header
@@ -24,6 +35,7 @@ export default function AdminPage() {
             12 <span className="text-base text-[#993C1D]">人</span>
           </p>
         </div>
+
         <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 bg-[#FAECE7] rounded-xl flex items-center justify-center text-lg">
@@ -45,6 +57,7 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+
         <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 bg-[#FAECE7] rounded-xl flex items-center justify-center text-lg">
@@ -61,11 +74,37 @@ export default function AdminPage() {
             </span>
           </div>
         </div>
-        {/* PrimaryButtonに置き換え */}
-        <PrimaryButton className="w-full border border-[#e0d6ce] bg-transparent text-gray-500 hover:bg-gray-50">
+
+        <PrimaryButton
+          className="w-full border border-[#e0d6ce] bg-transparent text-gray-500 hover:bg-gray-50"
+          onClick={() => setIsLogoutModalOpen(true)}
+        >
           ログアウト
         </PrimaryButton>
       </div>
+
+      {/* ログアウト確認モーダル */}
+      <Modal
+        open={isLogoutModalOpen}
+        onOpenChange={(open) => setIsLogoutModalOpen(open)}
+        title="ログアウトしますか？"
+        footer={
+          <div className="flex gap-2 w-full">
+            <button
+              className="flex-1 py-2 rounded-lg border border-[#e0d6ce] text-sm text-gray-500"
+              onClick={() => setIsLogoutModalOpen(false)}
+            >
+              キャンセル
+            </button>
+            <PrimaryButton
+              className="flex-1 bg-[#D85A30] hover:bg-[#D85A30] hover:opacity-85"
+              onClick={handleLogout}
+            >
+              ログアウト
+            </PrimaryButton>
+          </div>
+        }
+      />
     </div>
   );
 }
