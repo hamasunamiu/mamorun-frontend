@@ -210,7 +210,7 @@ export default function RegisterPage() {
               アカウント情報
             </h2>
             <InputField
-              label="お名前"
+              label="ニックネーム"
               required
               placeholder="例：花子"
               {...register("displayName")}
