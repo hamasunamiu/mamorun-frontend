@@ -10,64 +10,23 @@ import { BottomNavigation } from "@/components/common/BottomNavigation";
 import { EmergencyCallButton } from "@/components/common/EmergencyCallButton";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
-import { Modal } from "@/components/common/Modal";
-import { InputField } from "@/components/common/InputField";
-import { TextAreaField } from "@/components/common/TextAreaField";
-import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { supabase } from "@/lib/supabase";
 import { TodoCard } from "./_components/TodoCard";
 import { ScheduleCard } from "./_components/ScheduleCard";
-
-// ============================================================
-// 型定義（API設計書のレスポンス例に準拠）
-// ============================================================
-
-type Profile = {
-  id: string;
-  line_user_id: string | null;
-  is_premium: boolean;
-  stripe_customer_id: string | null;
-  pet_id: string | null;
-  notification_time: "morning" | "night";
-  created_at: string;
-};
-
-type Pet = {
-  id: string;
-  name: string;
-  species: "dog" | "cat";
-  gender: "male" | "female" | null;
-  birthday: string | null;
-  illness: string | null;
-  hospital_name: string | null;
-  hospital_phone: string | null;
-  hospital_address: string | null;
-  hospital_card_image_url: string | null;
-  insurance_card_image_url: string | null;
-  created_at: string;
-};
-
-type Todo = {
-  id: string;
-  pet_id: string;
-  task_name: string;
-  is_completed: boolean;
-  completed_by_id: string | null;
-  completed_at: string | null;
-  todo_date: string;
-  created_at: string;
-};
-
-type Schedule = {
-  id: string;
-  pet_id: string;
-  title: string;
-  scheduled_content: string | null;
-  scheduled_date: string;
-  is_completed: boolean;
-  created_at: string;
-};
+import { formatDateLabel, formatDaysUntil } from "@/lib/dateFormat";
+import type { Profile, Pet, Todo, Schedule } from "./_components/types";
+import {
+  MOCK_PROFILE,
+  MOCK_PET,
+  MOCK_PET_LIST,
+  MOCK_TODOS,
+  MOCK_SCHEDULES,
+} from "./_components/mockData";
+import { PetSwitchModal } from "./_components/PetSwitchModal";
+import { DeleteConfirmModal } from "./_components/DeleteConfirmModal";
+import { TodoFormModal } from "./_components/TodoFormModal";
+import { ScheduleFormModal } from "./_components/ScheduleFormModal";
 
 // ============================================================
 // フォーム用Zodスキーマ（画面設計書のバリデーション表に準拠）
@@ -112,144 +71,8 @@ const todoFormSchema = z.object({
 
 type TodoFormValues = z.infer<typeof todoFormSchema>;
 
-// ============================================================
-// 動作確認用モックデータ
-// ▼▼▼ バックエンド接続後、このブロックと下記useEffect内の切り替えは必ず削除し、
-//     元のapiFetch呼び出しのみに戻すこと ▼▼▼
-// ============================================================
-
-const MOCK_PROFILE: Profile = {
-  id: "mock-profile-id",
-  line_user_id: null,
-  is_premium: false,
-  stripe_customer_id: null,
-  pet_id: "mock-pet-id",
-  notification_time: "morning",
-  created_at: "2026-06-01T00:00:00.000Z",
-};
-
-const MOCK_PET: Pet = {
-  id: "mock-pet-id",
-  name: "むぎ",
-  species: "dog",
-  gender: "male",
-  birthday: "2023-04-01",
-  illness: "アレルギー性皮膚炎",
-  hospital_name: "〇〇動物病院",
-  hospital_phone: "0312345678",
-  hospital_address: "東京都渋谷区...",
-  hospital_card_image_url: null,
-  insurance_card_image_url: null,
-  created_at: "2026-06-01T00:00:00.000Z",
-};
-
-const MOCK_PET_LIST: Pet[] = [
-  MOCK_PET,
-  {
-    id: "mock-pet-id-2",
-    name: "もも",
-    species: "cat",
-    gender: "female",
-    birthday: "2022-09-10",
-    illness: null,
-    hospital_name: "〇〇動物病院",
-    hospital_phone: "0312345678",
-    hospital_address: "東京都渋谷区...",
-    hospital_card_image_url: null,
-    insurance_card_image_url: null,
-    created_at: "2026-06-01T00:00:00.000Z",
-  },
-];
-
-const MOCK_TODOS: Todo[] = [
-  {
-    id: "todo-1",
-    pet_id: "mock-pet-id",
-    task_name: "朝ごはん　7時",
-    is_completed: true,
-    completed_by_id: "mock-profile-id",
-    completed_at: "2026-06-24T07:00:00.000Z",
-    todo_date: "2026-06-24",
-    created_at: "2026-06-24T07:00:00.000Z",
-  },
-  {
-    id: "todo-2",
-    pet_id: "mock-pet-id",
-    task_name: "お散歩　8時半",
-    is_completed: false,
-    completed_by_id: null,
-    completed_at: null,
-    todo_date: "2026-06-24",
-    created_at: "2026-06-24T07:00:00.000Z",
-  },
-  {
-    id: "todo-3",
-    pet_id: "mock-pet-id",
-    task_name: "目薬（お散歩の後）",
-    is_completed: false,
-    completed_by_id: null,
-    completed_at: null,
-    todo_date: "2026-06-24",
-    created_at: "2026-06-24T07:00:00.000Z",
-  },
-];
-
-const MOCK_SCHEDULES: Schedule[] = [
-  {
-    id: "schedule-1",
-    pet_id: "mock-pet-id",
-    title: "狂犬病ワクチン",
-    scheduled_content: null,
-    scheduled_date: "2026-07-01",
-    is_completed: false,
-    created_at: "2025-07-01T00:00:00.000Z",
-  },
-  {
-    id: "schedule-2",
-    pet_id: "mock-pet-id",
-    title: "フィラリア薬",
-    scheduled_content: "毎月15日に投与。体重5kgのため1錠。",
-    scheduled_date: "2026-07-15",
-    is_completed: false,
-    created_at: "2026-06-15T00:00:00.000Z",
-  },
-];
-
-// ▲▲▲ 動作確認用モックデータここまで ▲▲▲
-
 // ▼ 動作確認用フラグ：バックエンド接続後は false に変更、または関連コードを削除すること
 const USE_MOCK_DATA = true;
-
-// ============================================================
-// 表示専用のフォーマット関数
-// （クライアント側でのみ呼び出すこと。isMountedガードと組み合わせて使用する）
-// ============================================================
-
-function formatDateLabel(date: Date): string {
-  const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const weekday = weekdays[date.getDay()];
-  return `${year}年${month}月${day}日（${weekday}）`;
-}
-
-function formatDaysUntil(scheduledDate: string, today: Date): string {
-  // 時刻部分の差異で日数がズレないよう、両方を「日付のみ」に正規化して比較する
-  const target = new Date(scheduledDate + "T00:00:00");
-  const todayMidnight = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate()
-  );
-
-  const diffMs = target.getTime() - todayMidnight.getTime();
-  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return "今日";
-  if (diffDays < 0) return "期限切れ";
-  return `あと${diffDays}日`;
-}
 
 export default function CareHomePage() {
   const router = useRouter();
@@ -746,140 +569,48 @@ export default function CareHomePage() {
       </main>
 
       {/* ToDo追加・編集用のModal */}
-      <Modal
+      <TodoFormModal
         open={isTodoModalOpen}
         onOpenChange={(open) => {
           setIsTodoModalOpen(open);
           if (!open) setEditingTodoId(null);
         }}
-        title={editingTodoId ? "ToDoを編集する" : "ToDoを追加する"}
-      >
-        <form
-          onSubmit={handleSubmitTodo(onSubmitTodo)}
-          className="flex flex-col gap-4"
-        >
-          <InputField
-            label="タスク名"
-            required
-            placeholder="例：朝ごはん　7時"
-            {...registerTodo("taskName")}
-            error={todoErrors.taskName?.message}
-          />
-          <PrimaryButton
-            type="submit"
-            className="h-12 rounded-2xl bg-[#C69A6B] hover:bg-[#C69A6B] hover:opacity-85"
-          >
-            {editingTodoId ? "更新する" : "追加する"}
-          </PrimaryButton>
-        </form>
-      </Modal>
+        isEditing={editingTodoId !== null}
+        onSubmit={handleSubmitTodo(onSubmitTodo)}
+        register={registerTodo}
+        errors={todoErrors}
+      />
 
       {/* 予定追加・編集用のModal */}
-      <Modal
+      <ScheduleFormModal
         open={isScheduleModalOpen}
         onOpenChange={(open) => {
           setIsScheduleModalOpen(open);
           if (!open) setEditingScheduleId(null);
         }}
-        title={editingScheduleId ? "予定を編集する" : "予定を追加する"}
-      >
-        <form
-          onSubmit={handleSubmitSchedule(onSubmitSchedule)}
-          className="flex flex-col gap-4"
-        >
-          <InputField
-            label="タイトル"
-            required
-            placeholder="例：フィラリア薬"
-            {...registerSchedule("title")}
-            error={scheduleErrors.title?.message}
-          />
-          <TextAreaField
-            label="予定内容"
-            placeholder="例：毎月15日に投与"
-            {...registerSchedule("scheduledContent")}
-            error={scheduleErrors.scheduledContent?.message}
-          />
-          <InputField
-            label="予定日"
-            required
-            type="date"
-            {...registerSchedule("scheduledDate")}
-            error={scheduleErrors.scheduledDate?.message}
-          />
-          <PrimaryButton
-            type="submit"
-            className="h-12 rounded-2xl bg-[#C69A6B] hover:bg-[#C69A6B] hover:opacity-85"
-          >
-            {editingScheduleId ? "更新する" : "追加する"}
-          </PrimaryButton>
-        </form>
-      </Modal>
+        isEditing={editingScheduleId !== null}
+        onSubmit={handleSubmitSchedule(onSubmitSchedule)}
+        register={registerSchedule}
+        errors={scheduleErrors}
+      />
 
       {/* 削除確認用のModal（ToDo・予定共通） */}
-      <Modal
+      <DeleteConfirmModal
         open={deleteTarget !== null}
-        onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null);
-        }}
-        title="削除しますか？"
-        description={
-          deleteTarget
-            ? `「${deleteTarget.name}」を削除します。この操作は取り消せません。`
-            : undefined
-        }
-        footer={
-          <div className="flex w-full gap-2">
-            <button
-              type="button"
-              onClick={() => setDeleteTarget(null)}
-              className="h-11 flex-1 rounded-2xl border border-border text-sm font-medium text-foreground"
-            >
-              キャンセル
-            </button>
-            <button
-              type="button"
-              onClick={handleConfirmDelete}
-              className="h-11 flex-1 rounded-2xl bg-destructive text-sm font-medium text-white"
-            >
-              削除する
-            </button>
-          </div>
-        }
+        targetName={deleteTarget?.name}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
       />
 
       {/* ペット切り替え用のModal（2匹以上の場合に表示）
-          現時点ではMOCK_PET_LISTを使用。複数ペット取得APIの仕様確定後、
-          GET /api/pets相当のレスポンスをpetListにセットするだけで完成する設計 */}
-      <Modal
+      現時点ではMOCK_PET_LISTを使用。複数ペット取得APIの仕様確定後、
+      GET /api/pets相当のレスポンスをpetListにセットするだけで完成する設計 */}
+      <PetSwitchModal
         open={isPetSwitchModalOpen}
         onOpenChange={setIsPetSwitchModalOpen}
-        title="ペットを切り替える"
-      >
-        <div className="flex flex-col gap-2">
-          {petList.map((p) => {
-            const isSelected = p.id === pet?.id;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => handleSwitchPet(p)}
-                aria-pressed={isSelected}
-                className={`flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium ${
-                  isSelected
-                    ? "border-[#C4956A] bg-[#FBE9DD] text-[#993C1D]"
-                    : "border-border bg-background text-foreground"
-                }`}
-              >
-                <span aria-hidden="true">
-                  {p.species === "dog" ? "🐶" : "🐱"}
-                </span>
-                {p.name}
-              </button>
-            );
-          })}
-        </div>
-      </Modal>
+        petList={petList}
+        currentPetId={pet?.id}onSwitch={handleSwitchPet}
+      />
 
       {/* 画面下部の共通ナビゲーション */}
       <BottomNavigation />
