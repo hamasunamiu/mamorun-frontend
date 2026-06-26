@@ -43,11 +43,11 @@ const scheduleFormSchema = z.object({
         const todayMidnight = new Date(
           today.getFullYear(),
           today.getMonth(),
-          today.getDate()
+          today.getDate(),
         );
         return inputDate >= todayMidnight;
       },
-      { message: "予定日に過去の日付は設定できません" }
+      { message: "予定日に過去の日付は設定できません" },
     ),
 });
 
@@ -87,7 +87,7 @@ export default function CareHomePage() {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(
-    null
+    null,
   );
   const [isPetSwitchModalOpen, setIsPetSwitchModalOpen] = useState(false);
 
@@ -137,7 +137,7 @@ export default function CareHomePage() {
     resetTodoForm({ taskName: "" });
     setIsTodoModalOpen(true);
   };
-  
+
   const handleRequestDeleteTodo = (todo: Todo) => {
     setDeleteTarget({ type: "todo", id: todo.id, name: todo.task_name });
   };
@@ -164,8 +164,8 @@ export default function CareHomePage() {
                 ? (profile?.id ?? null)
                 : null,
             }
-          : todo
-      )
+          : todo,
+      ),
     );
   };
 
@@ -178,8 +178,8 @@ export default function CareHomePage() {
         prevTodos.map((todo) =>
           todo.id === editingTodoId
             ? { ...todo, task_name: values.taskName }
-            : todo
-        )
+            : todo,
+        ),
       );
     } else {
       // 新規追加モード
@@ -222,7 +222,11 @@ export default function CareHomePage() {
   };
 
   const handleRequestDeleteSchedule = (schedule: Schedule) => {
-    setDeleteTarget({ type: "schedule", id: schedule.id, name: schedule.title });
+    setDeleteTarget({
+      type: "schedule",
+      id: schedule.id,
+      name: schedule.title,
+    });
   };
 
   const handleStartEditSchedule = (schedule: Schedule) => {
@@ -242,8 +246,8 @@ export default function CareHomePage() {
       prevSchedules.map((schedule) =>
         schedule.id === scheduleId
           ? { ...schedule, is_completed: !schedule.is_completed }
-          : schedule
-      )
+          : schedule,
+      ),
     );
   };
 
@@ -261,8 +265,8 @@ export default function CareHomePage() {
                 scheduled_content: values.scheduledContent || null,
                 scheduled_date: values.scheduledDate,
               }
-            : schedule
-        )
+            : schedule,
+        ),
       );
     } else {
       // 新規追加モード
@@ -298,11 +302,11 @@ export default function CareHomePage() {
 
     if (deleteTarget.type === "todo") {
       setTodos((prevTodos) =>
-        prevTodos.filter((todo) => todo.id !== deleteTarget.id)
+        prevTodos.filter((todo) => todo.id !== deleteTarget.id),
       );
     } else {
       setSchedules((prevSchedules) =>
-        prevSchedules.filter((schedule) => schedule.id !== deleteTarget.id)
+        prevSchedules.filter((schedule) => schedule.id !== deleteTarget.id),
       );
     }
 
