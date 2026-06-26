@@ -5,20 +5,18 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { InputField } from "@/components/common/InputField";
-import { ImageUploader } from "@/components/common/ImageUploader";
-import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { EmergencyCallButton } from "@/components/common/EmergencyCallButton";
 import { Header } from "@/components/common/Header";
 import { BottomNavigation } from "@/components/common/BottomNavigation";
 import { PetSwitchModal } from "@/components/common/PetSwitchModal";
-import { Card } from "@/components/common/Card";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { uploadPetImage } from "@/lib/petImageUpload";
 import type { Profile, Pet } from "./_components/types";
 import { MOCK_PET, MOCK_PET_LIST } from "./_components/mockData";
+import { HospitalDisplayView } from "./_components/HospitalDisplayView";
+import { HospitalEditView } from "./_components/HospitalEditView";
 
 // ============================================================
 // フォーム用Zodスキーマ
@@ -125,7 +123,7 @@ export default function HospitalPage() {
         setLoadError(
           err instanceof ApiError
             ? err.message
-            : "データの取得に失敗しました。時間をおいて再度お試しください。"
+            : "データの取得に失敗しました。時間をおいて再度お試しください。",
         );
       } finally {
         setIsLoading(false);
@@ -151,6 +149,20 @@ export default function HospitalPage() {
     // ペットを切り替えたら編集モードは強制終了し、誤って別ペットの情報を編集しないようにする
     setIsEditing(false);
     setIsPetSwitchModalOpen(false);
+  };
+
+  const handleCancelEdit = () => {
+    if (pet) {
+      reset({
+        hospital_name: pet.hospital_name ?? "",
+        hospital_phone: pet.hospital_phone ?? "",
+        hospital_address: pet.hospital_address ?? "",
+      });
+    }
+    setHospitalCardFile(null);
+    setInsuranceCardFile(null);
+    setSaveError(null);
+    setIsEditing(false);
   };
 
   const onSubmit = async (values: HospitalFormValues) => {
@@ -194,14 +206,14 @@ export default function HospitalPage() {
         hospitalCardUrl = await uploadPetImage(
           pet.id,
           hospitalCardFile,
-          "hospital-card"
+          "hospital-card",
         );
       }
       if (insuranceCardFile) {
         insuranceCardUrl = await uploadPetImage(
           pet.id,
           insuranceCardFile,
-          "insurance-card"
+          "insurance-card",
         );
       }
 
@@ -225,7 +237,7 @@ export default function HospitalPage() {
       setSaveError(
         err instanceof ApiError || err instanceof Error
           ? err.message
-          : "保存に失敗しました。時間をおいて再度お試しください。"
+          : "保存に失敗しました。時間をおいて再度お試しください。",
       );
     } finally {
       setIsSubmitting(false);
@@ -277,154 +289,19 @@ export default function HospitalPage() {
       />
 
       {isEditing ? (
-        // ------------------------------------------------------------
-        // 編集モード：フォーム（InputField + ImageUploader）
-        // ------------------------------------------------------------
-        <div className="p-4">
-          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-            <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4 flex flex-col gap-3">
-              <InputField
-                label="病院名"
-                required
-                placeholder="例：〇〇動物病院"
-                {...register("hospital_name")}
-                error={errors.hospital_name?.message}
-              />
-
-              <InputField
-                label="電話番号"
-                required
-                type="tel"
-                inputMode="numeric"
-                placeholder="0312345678"
-                {...register("hospital_phone")}
-                error={errors.hospital_phone?.message}
-              />
-
-              <InputField
-                label="住所"
-                required
-                placeholder="例：東京都渋谷区..."
-                {...register("hospital_address")}
-                error={errors.hospital_address?.message}
-              />
-            </div>
-
-            {/* 診察券・保険証の画像（任意・jpg/png/webp・5MB以内）
-                ImageUploader自体がMIMEタイプ・サイズの事前チェックとプレビュー表示を内包している */}
-            <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4 flex flex-col gap-4">
-              <ImageUploader
-                label="診察券"
-                onFileSelect={setHospitalCardFile}
-                initialImageUrl={pet?.hospital_card_image_url ?? undefined}
-              />
-              <ImageUploader
-                label="保険証"
-                onFileSelect={setInsuranceCardFile}
-                initialImageUrl={pet?.insurance_card_image_url ?? undefined}
-              />
-            </div>
-
-            {saveError && <ErrorMessage message={saveError} />}
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  // 編集を取り消し、フォームの値を現在のpetの内容に戻してから閲覧モードへ
-                  if (pet) {
-                    reset({
-                      hospital_name: pet.hospital_name ?? "",
-                      hospital_phone: pet.hospital_phone ?? "",
-                      hospital_address: pet.hospital_address ?? "",
-                    });
-                  }
-                  setHospitalCardFile(null);
-                  setInsuranceCardFile(null);
-                  setSaveError(null);
-                  setIsEditing(false);
-                }}
-                className="h-12 flex-1 rounded-2xl border border-border text-sm font-medium text-foreground"
-              >
-                キャンセル
-              </button>
-              <PrimaryButton
-                type="submit"
-                disabled={isSubmitting}
-                className="h-12 flex-1 bg-[#D85A30] text-white hover:bg-[#D85A30] hover:opacity-85"
-              >
-                {isSubmitting ? <LoadingSpinner size="sm" /> : "保存する"}
-              </PrimaryButton>
-            </div>
-          </form>
-        </div>
+        <HospitalEditView
+          pet={pet}
+          onSubmit={handleSubmit(onSubmit)}
+          register={register}
+          errors={errors}
+          onHospitalCardSelect={setHospitalCardFile}
+          onInsuranceCardSelect={setInsuranceCardFile}
+          saveError={saveError}
+          isSubmitting={isSubmitting}
+          onCancel={handleCancelEdit}
+        />
       ) : (
-        // ------------------------------------------------------------
-        // 閲覧モード：テキスト表示＋画像表示のみ（編集ボタンを押すまで編集不可）
-        // ------------------------------------------------------------
-        <div className="p-4 flex flex-col gap-4">
-          <Card>
-            <div className="flex flex-col gap-3">
-              <div>
-                <p className="text-xs text-muted-foreground">病院名</p>
-                <p className="text-sm text-foreground">
-                  {pet?.hospital_name || "未登録"}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">電話番号</p>
-                <p className="text-sm text-foreground">
-                  {pet?.hospital_phone || "未登録"}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">住所</p>
-                <p className="text-sm text-foreground">
-                  {pet?.hospital_address || "未登録"}
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <div className="flex flex-col gap-4">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1.5">診察券</p>
-                {pet?.hospital_card_image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={pet.hospital_card_image_url}
-                    alt="診察券のプレビュー"
-                    className="h-72 w-full rounded-md border border-border object-cover"
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground">未登録</p>
-                )}
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1.5">保険証</p>
-                {pet?.insurance_card_image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={pet.insurance_card_image_url}
-                    alt="保険証のプレビュー"
-                    className="h-72 w-full rounded-md border border-border object-cover"
-                  />
-                ) : (
-                  <p className="text-sm text-muted-foreground">未登録</p>
-                )}
-              </div>
-            </div>
-          </Card>
-
-          <PrimaryButton
-            type="button"
-            onClick={() => setIsEditing(true)}
-            className="w-full bg-[#D85A30] text-white hover:bg-[#D85A30] hover:opacity-85"
-          >
-            編集する
-          </PrimaryButton>
-        </div>
+        <HospitalDisplayView pet={pet} onEditClick={() => setIsEditing(true)} />
       )}
 
       {/* ペット切り替え用のModal（2匹以上の場合に表示）
