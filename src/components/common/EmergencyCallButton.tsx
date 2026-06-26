@@ -9,11 +9,11 @@ export function EmergencyCallButton({ phoneNumber }: EmergencyCallButtonProps) {
   return (
     <a
       href={`tel:${phoneNumber}`}
-      className="flex min-h-11 items-center gap-1.5 rounded-md bg-destructive/10 px-3 py-2 text-destructive"
+      className="flex min-h-14 items-center gap-2 rounded-lg bg-destructive/10 px-10 py-2.5 text-destructive"
       aria-label="緊急発信"
     >
-      <Phone className="h-[18px] w-[18px]" aria-hidden="true" />
-      <span className="text-xs font-medium">緊急発信</span>
+      <Phone className="h-6 w-6" aria-hidden="true" />
+      <span className="text-sm font-bold">緊急発信</span>
     </a>
   );
 }
