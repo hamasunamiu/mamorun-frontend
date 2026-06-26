@@ -32,9 +32,13 @@ export default function SettingsPage() {
         },
       });
 
+      // ✅ 修正後：正常なときだけdataを取る
       const result = await response.json();
-      setIsPremium(result.data.is_premium);
-      setIsLineLinked(!!result.data.line_user_id);
+      if (response.ok && result.data) {
+        // 正常 かつ dataがある場合だけ
+        setIsPremium(result.data.is_premium);
+        setIsLineLinked(!!result.data.line_user_id);
+      }
     };
 
     fetchProfile();
