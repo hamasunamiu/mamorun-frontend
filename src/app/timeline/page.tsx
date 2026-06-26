@@ -1,44 +1,112 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/common/Header";
 import { BottomNavigation } from "@/components/common/BottomNavigation";
-import { InputField } from "@/components/common/InputField"; //プルリクレビューによりInputFieldsがInputFieldに。
+import { InputField } from "@/components/common/InputField";
 import { TextAreaField } from "@/components/common/TextAreaField";
 import { ImageUploader } from "@/components/common/ImageUploader";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { Modal } from "@/components/common/Modal";
+import { apiFetch, ApiError } from "@/lib/api-client";
+
+type HealthLog = {
+  id: string;
+  pet_id: string;
+  created_by_id: string | null;
+  title: string;
+  detail_memo: string | null;
+  attached_image_url: string | null;
+  created_at: string;
+};
 
 export default function TimelinePage() {
+  const [logs, setLogs] = useState<HealthLog[]>([]);
   const [title, setTitle] = useState("");
   const [memo, setMemo] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [imageUploaderKey, setImageUploaderKey] = useState(0);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // 投稿ボタンの活性/非活性（タイトルが空なら送れない）
-  const isSubmitDisabled = title.trim() === "";
+  // 一覧取得
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        const data = await apiFetch<{ data: HealthLog[]; total: number }>(
+          "/api/health-logs",
+        );
+        setLogs(data.data ?? []);
+      } catch (err) {
+        if (err instanceof ApiError) {
+          setError(err.message);
+        } else {
+          setError("体調ログの取得に失敗しました。");
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchLogs();
+  }, []);
 
-  // 投稿処理（後でAPI繋ぎ込む場所）
+  const isSubmitDisabled = title.trim() === "" || isSubmitting;
+
+  // 投稿処理
   const handleSubmit = async () => {
-    // TODO: POST /api/health-logs
-    console.log({ title, memo, imageFile });
-    // 投稿後にフォームリセット
-    setTitle("");
-    setMemo("");
-    setImageFile(null);
+    if (isSubmitDisabled) return;
+    setIsSubmitting(true);
+    try {
+      const newLog = await apiFetch<HealthLog>("/api/health-logs", {
+        method: "POST",
+        body: JSON.stringify({
+          title,
+          detail_memo: memo,
+          // 画像URLは別途Supabase Storageへアップロード後に設定
+        }),
+      });
+      setLogs((prev) => [newLog, ...prev]);
+      setTitle("");
+      setMemo("");
+      setImageFile(null);
+      setImageUploaderKey((prev) => prev + 1);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("投稿に失敗しました。");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  // 削除処理（後でAPI繋ぎ込む場所）
+  // 削除処理
   const handleDeleteClick = (id: string) => {
     setDeleteTargetId(id);
     setIsDeleteModalOpen(true);
   };
 
   const handleDeleteConfirm = async () => {
-    // TODO: DELETE /api/health-logs/:logId
-    console.log("delete:", deleteTargetId);
-    setIsDeleteModalOpen(false);
-    setDeleteTargetId(null);
+    if (!deleteTargetId) return;
+    try {
+      await apiFetch(`/api/health-logs/${deleteTargetId}`, {
+        method: "DELETE",
+      });
+      setLogs((prev) => prev.filter((log) => log.id !== deleteTargetId));
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError("削除に失敗しました。");
+      }
+    } finally {
+      setIsDeleteModalOpen(false);
+      setDeleteTargetId(null);
+    }
   };
 
   return (
@@ -68,69 +136,76 @@ export default function TimelinePage() {
               onChange={(e) => setMemo(e.target.value)}
             />
             <ImageUploader
+              key={imageUploaderKey}
               label="写真"
               onFileSelect={(file) => setImageFile(file)}
             />
           </div>
+          {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
           <PrimaryButton
             className="w-full mt-3 bg-[#D85A30] text-white hover:bg-[#D85A30] hover:opacity-85"
             onClick={handleSubmit}
             disabled={isSubmitDisabled}
           >
-            投稿する
+            {isSubmitting ? "投稿中..." : "投稿する"}
           </PrimaryButton>
         </div>
 
-        {/* タイムラインログ1 */}
-        <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-full bg-[#FAECE7] flex items-center justify-center text-xs font-medium text-[#993C1D]">
-              ま
-            </div>
-            <div>
-              <p className="text-xs font-medium text-[#993C1D]">まの</p>
-              <p className="text-xs text-gray-400">6月12日 08:32</p>
-            </div>
+        {/* タイムライン一覧 */}
+        {isLoading ? (
+          <div className="text-center text-sm text-gray-400 py-8">
+            読み込み中...
           </div>
-          <p className="text-sm font-medium text-gray-800 mb-1">
-            朝の散歩、元気いっぱい！
-            {/* タイムラインログ1の画像部分を差し替え */}
-            <img
-              src="/images/timeline-shiba.png"
-              alt="散歩の様子"
-              className="w-full h-32 rounded-lg object-cover mb-2"
-            />
-            今日はいつもより長めに歩いた。食欲も普通。うんちは1回、問題なし。
-          </p>
-          <div className="flex justify-end border-t border-[#f0e8e0] pt-2">
-            <button
-              className="text-xs text-gray-400"
-              onClick={() => handleDeleteClick("dummy-id-1")}
+        ) : logs.length === 0 ? (
+          <div className="text-center text-sm text-gray-400 py-8">
+            まだ記録がありません
+          </div>
+        ) : (
+          logs.map((log) => (
+            <div
+              key={log.id}
+              className="bg-white rounded-2xl border border-[#e0d6ce] p-4"
             >
-              🗑 削除
-            </button>
-          </div>
-        </div>
-
-        {/* タイムラインログ2 */}
-        <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-full bg-[#FAECE7] flex items-center justify-center text-xs font-medium text-[#993C1D]">
-              ゆ
-            </div>
-            <div>
-              <p className="text-xs font-medium text-[#993C1D]">ゆい</p>
-              <p className="text-xs text-gray-400">6月11日 21:15</p>
-            </div>
-          </div>
-          <p className="text-sm font-medium text-gray-800 mb-1">
-            夜ごはん完食🍚
-          </p>
-          <p className="text-sm text-gray-500 leading-relaxed">
-            いつも通り完食。元気そう。薬も問題なく飲めた。
-          </p>
-        </div>
-      </div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-7 h-7 rounded-full bg-[#FAECE7] flex items-center justify-center text-xs font-medium text-[#993C1D]">
+                  {log.created_by_id?.slice(0, 1).toUpperCase() ?? "?"}
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400">
+                    {new Date(log.created_at).toLocaleDateString("ja-JP", {
+                      month: "long",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+              </div>
+              <p className="text-sm font-medium text-gray-800 mb-1">
+                {log.title}
+              </p>
+              {log.attached_image_url && (
+                <img
+                  src={log.attached_image_url}
+                  alt="添付画像"
+                  className="w-full h-32 rounded-lg object-cover mb-2"
+                />
+              )}
+              {log.detail_memo && (
+                <p className="text-sm text-gray-500 leading-relaxed mb-3">
+                  {log.detail_memo}
+                </p>
+              )}
+              {currentUserId === log.created_by_id && (
+  <div className="flex justify-end border-t border-[#f0e8e0] pt-2">
+    <button
+      className="text-xs text-gray-400"
+      onClick={() => handleDeleteClick(log.id)}
+    >
+      🗑 削除
+    </button>
+  </div>
+)}
 
       {/* 削除確認モーダル */}
       <Modal

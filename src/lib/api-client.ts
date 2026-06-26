@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
 
 export class ApiError extends Error {
   code: string;
@@ -23,7 +24,7 @@ export class ApiError extends Error {
  */
 export async function apiFetch<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<T> {
   const { data } = await supabase.auth.getSession();
   const accessToken = data.session?.access_token;
@@ -42,7 +43,7 @@ export async function apiFetch<T>(
     throw new ApiError(
       response.status === 401 ? "UNAUTHORIZED" : "FORBIDDEN",
       "認証エラーが発生しました。",
-      response.status
+      response.status,
     );
   }
 
@@ -54,7 +55,7 @@ export async function apiFetch<T>(
     throw new ApiError(
       "INVALID_RESPONSE",
       "サーバーから予期しない応答がありました。時間をおいて再度お試しください。",
-      response.status
+      response.status,
     );
   }
 
@@ -62,7 +63,7 @@ export async function apiFetch<T>(
     throw new ApiError(
       json.error?.code ?? "UNKNOWN_ERROR",
       json.error?.message ?? "エラーが発生しました。",
-      response.status
+      response.status,
     );
   }
 
