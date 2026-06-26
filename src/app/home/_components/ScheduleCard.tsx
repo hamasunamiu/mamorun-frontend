@@ -63,9 +63,8 @@ export function ScheduleCard({
       </button>
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2">
           <span
-            className={`truncate text-sm font-medium ${
+            className={`block truncate text-sm font-medium ${
               isCompleted
                 ? "text-muted-foreground line-through"
                 : "text-foreground"
@@ -73,19 +72,19 @@ export function ScheduleCard({
           >
             {title}
           </span>
-          {/* ★日付＋あと○日表示。期限切れの場合は注意を引く色にする（色だけでなくテキスト自体が意味を持つ） */}
-          <span
-            className={`shrink-0 text-xs font-medium ${
-              isOverdue ? "text-destructive" : "text-[#9E7654]"
-            }`}
-          >
-            {daysUntilLabel}
-          </span>
-        </div>
-        {content && (
-          <p className="mt-1 text-xs text-muted-foreground">{content}</p>
-        )}
+          {content && (
+            <p className="mt-1 text-xs text-muted-foreground">{content}</p>
+          )} 
       </div>
+
+      {/* ★日付＋あと○日表示。期限切れの場合は注意を引く色にする（色だけでなくテキスト自体が意味を持つ） */}
+      <span
+        className={`shrink-0 text-sm font-medium ${
+          isOverdue ? "text-destructive" : "text-[#9E7654]"
+        }`}
+        >
+          {daysUntilLabel}
+        </span>
 
       {/* ★変更：削除ボタン単体ではなく、編集・削除をまとめたケバブメニューに変更 */}
       <DropdownMenu>

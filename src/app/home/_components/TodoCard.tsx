@@ -75,7 +75,7 @@ export function TodoCard({
           現時点では人型アイコン＋IDの先頭4文字のみの仮表示。
           バックエンドでdisplay_nameカラム追加後、completed_by_name等に差し替える予定 */}
         {isCompleted && completedById && (
-          <div className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+          <div className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground">
             <span aria-hidden="true">👤</span>
             <span>{completedById.slice(0, 4)}</span>
           </div>
