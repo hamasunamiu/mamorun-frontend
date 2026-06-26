@@ -1,16 +1,17 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/common/Header";
 import { BottomNavigation } from "@/components/common/BottomNavigation";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { Modal } from "@/components/common/Modal";
+import { supabase } from "@/lib/supabase";
 
 export default function SettingsPage() {
   const [notificationTime, setNotificationTime] = useState<"morning" | "night">(
     "morning",
   );
-  const [isPremium, setIsPremium] = useState(true);
-  const [isLineLinked, setIsLineLinked] = useState(true);
+  const [isPremium, setIsPremium] = useState(false);
+  const [isLineLinked, setIsLineLinked] = useState(false);
   const [isPetModalOpen, setIsPetModalOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -18,34 +19,106 @@ export default function SettingsPage() {
   const [isPremiumCancelModalOpen, setIsPremiumCancelModalOpen] =
     useState(false);
 
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch("http://localhost:3001/api/profiles/me", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const result = await response.json();
+      setIsPremium(result.data.is_premium);
+      setIsLineLinked(!!result.data.line_user_id);
+    };
+
+    fetchProfile();
+  }, []);
+
   const handleLogout = async () => {
-    // TODO: Supabase Auth signOut
-    console.log("ログアウト");
+    await supabase.auth.signOut();
+    window.location.href = "/login";
     setIsLogoutModalOpen(false);
   };
 
   const handleUpgrade = async () => {
-    // TODO: POST /api/stripe/checkout → Stripe Checkoutページへリダイレクト
-    console.log("プレミアム購入");
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const response = await fetch("http://localhost:3001/api/stripe/checkout", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session?.access_token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    const result = await response.json();
+    if (result.data?.url) {
+      window.location.href = result.data.url;
+    }
   };
 
   const handleLineLink = async () => {
-    // TODO: LINE Login → PATCH /api/profiles/me { line_user_id }
-    console.log("LINE連携");
-    setIsLineLinked(true); // ダミー
+    const lineUserId = prompt(
+      "LINE IDを入力してください（例：Uxxxxxxxxxxxxxxxx）",
+    );
+    if (!lineUserId) return;
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    await fetch("http://localhost:3001/api/profiles/me", {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${session?.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ line_user_id: lineUserId }),
+    });
+
+    setIsLineLinked(true);
   };
 
   const handleLineUnlink = async () => {
-    // TODO: PATCH /api/profiles/me { line_user_id: null }
-    console.log("LINE連携解除");
-    setIsLineLinked(false); // ダミー
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    await fetch("http://localhost:3001/api/profiles/me", {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${session?.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ line_user_id: null }),
+    });
+
+    setIsLineLinked(false);
     setIsLineUnlinkModalOpen(false);
   };
 
   const handlePremiumCancel = async () => {
-    // TODO: POST /api/stripe/cancel
-    console.log("プレミアム解除");
-    setIsPremium(false); // ダミー
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    await fetch("http://localhost:3001/api/stripe/cancel", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session?.access_token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    setIsPremium(false);
     setIsPremiumCancelModalOpen(false);
   };
 
@@ -124,7 +197,6 @@ export default function SettingsPage() {
             AI相談が無制限・LINE通知が使えるようになります。月額500円（税込）
           </p>
 
-          {/* アップグレードボタン（未加入時のみ） */}
           {!isPremium && (
             <PrimaryButton
               className="w-full bg-[#D85A30] hover:bg-[#D85A30] hover:opacity-85 mb-3"
@@ -134,11 +206,9 @@ export default function SettingsPage() {
             </PrimaryButton>
           )}
 
-          {/* プレミアム会員向けコンテンツ（グレーアウト制御） */}
           <div
             className={`flex flex-col gap-3 ${!isPremium ? "opacity-40 pointer-events-none" : ""}`}
           >
-            {/* LINE連携 */}
             <div className="border-t border-[#f0e8e0] pt-3">
               <p className="text-xs font-medium text-gray-600 mb-2">
                 📲 LINE連携
@@ -154,12 +224,25 @@ export default function SettingsPage() {
                       連携解除
                     </button>
                   </div>
-                  {/* デモ用テスト送信ボタン */}
                   <button
                     className="text-xs text-gray-400 border border-[#e0d6ce] rounded-lg py-1.5 px-3 w-full"
                     onClick={() => {
-                      // TODO: POST /api/notifications/line/remind
-                      console.log("LINEテスト送信");
+                      const sendLineTest = async () => {
+                        const {
+                          data: { session },
+                        } = await supabase.auth.getSession();
+                        await fetch(
+                          "http://localhost:3001/api/notifications/line/remind",
+                          {
+                            method: "POST",
+                            headers: {
+                              Authorization: `Bearer ${session?.access_token}`,
+                            },
+                          },
+                        );
+                        alert("LINEを送信しました！");
+                      };
+                      sendLineTest();
                     }}
                   >
                     📨 LINEテスト送信（デモ用）
@@ -175,7 +258,6 @@ export default function SettingsPage() {
               )}
             </div>
 
-            {/* 通知タイミング（LINE連携済みの場合のみ表示） */}
             {isLineLinked && (
               <div className="border-t border-[#f0e8e0] pt-3">
                 <p className="text-xs font-medium text-gray-600 mb-2">
@@ -206,10 +288,30 @@ export default function SettingsPage() {
                     夜（20:00）
                   </button>
                 </div>
+                <PrimaryButton
+                  className="w-full bg-[#D85A30] hover:bg-[#D85A30] hover:opacity-85 mt-2"
+                  onClick={async () => {
+                    const {
+                      data: { session },
+                    } = await supabase.auth.getSession();
+                    await fetch("http://localhost:3001/api/profiles/me", {
+                      method: "PATCH",
+                      headers: {
+                        Authorization: `Bearer ${session?.access_token}`,
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        notification_time: notificationTime,
+                      }),
+                    });
+                    alert("通知時間を保存しました！");
+                  }}
+                >
+                  通知時間を保存する
+                </PrimaryButton>
               </div>
             )}
 
-            {/* プレミアム解除（プレミアム会員のみ） */}
             {isPremium && (
               <div className="border-t border-[#f0e8e0] pt-3">
                 <button
@@ -223,7 +325,6 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* ログアウト */}
         <PrimaryButton
           className="w-full border border-[#e0d6ce] bg-transparent text-gray-500 hover:bg-gray-50"
           onClick={() => setIsLogoutModalOpen(true)}
@@ -232,7 +333,6 @@ export default function SettingsPage() {
         </PrimaryButton>
       </div>
 
-      {/* ペット追加モーダル */}
       <Modal
         open={isPetModalOpen}
         onOpenChange={(open) => setIsPetModalOpen(open)}
@@ -249,7 +349,6 @@ export default function SettingsPage() {
             <PrimaryButton
               className="flex-1 bg-[#D85A30] hover:bg-[#D85A30] hover:opacity-85"
               onClick={() => {
-                // TODO: POST /api/pets
                 console.log("ペット追加");
                 setIsPetModalOpen(false);
               }}
@@ -260,7 +359,6 @@ export default function SettingsPage() {
         }
       />
 
-      {/* 招待URLモーダル */}
       <Modal
         open={isInviteModalOpen}
         onOpenChange={(open) => setIsInviteModalOpen(open)}
@@ -277,7 +375,6 @@ export default function SettingsPage() {
             <PrimaryButton
               className="flex-1 bg-[#D85A30] hover:bg-[#D85A30] hover:opacity-85"
               onClick={() => {
-                // TODO: POST /api/pets/:petId/invite
                 console.log("招待URL発行");
                 setIsInviteModalOpen(false);
               }}
@@ -288,7 +385,6 @@ export default function SettingsPage() {
         }
       />
 
-      {/* LINE連携解除モーダル */}
       <Modal
         open={isLineUnlinkModalOpen}
         onOpenChange={(open) => setIsLineUnlinkModalOpen(open)}
@@ -312,7 +408,6 @@ export default function SettingsPage() {
         }
       />
 
-      {/* プレミアム解約モーダル */}
       <Modal
         open={isPremiumCancelModalOpen}
         onOpenChange={(open) => setIsPremiumCancelModalOpen(open)}
@@ -336,7 +431,6 @@ export default function SettingsPage() {
         }
       />
 
-      {/* ログアウト確認モーダル */}
       <Modal
         open={isLogoutModalOpen}
         onOpenChange={(open) => setIsLogoutModalOpen(open)}
