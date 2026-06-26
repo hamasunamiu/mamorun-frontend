@@ -16,39 +16,9 @@ import { BottomNavigation } from "@/components/common/BottomNavigation";
 import { Modal } from "@/components/common/Modal";
 import { Card } from "@/components/common/Card";
 import { apiFetch, ApiError } from "@/lib/api-client";
-import { supabase } from "@/lib/supabase";
-
-// ============================================================
-// 型定義（home/page.tsx の Profile / Pet 型に準拠。
-// 本来は共通の types/ フォルダへ切り出すのが理想だが、
-// 現状 home/page.tsx 内にも同じ型が個別定義されているため、
-// 既存の規約に合わせてこのファイル内に定義する）
-// ============================================================
-
-type Profile = {
-  id: string;
-  line_user_id: string | null;
-  is_premium: boolean;
-  stripe_customer_id: string | null;
-  pet_id: string | null;
-  notification_time: "morning" | "night";
-  created_at: string;
-};
-
-type Pet = {
-  id: string;
-  name: string;
-  species: "dog" | "cat";
-  gender: "male" | "female" | null;
-  birthday: string | null;
-  illness: string | null;
-  hospital_name: string | null;
-  hospital_phone: string | null;
-  hospital_address: string | null;
-  hospital_card_image_url: string | null;
-  insurance_card_image_url: string | null;
-  created_at: string;
-};
+import { uploadPetImage } from "@/lib/petImageUpload";
+import type { Profile, Pet } from "./_components/types";
+import { MOCK_PROFILE, MOCK_PET, MOCK_PET_LIST } from "./_components/mockData";
 
 // ============================================================
 // フォーム用Zodスキーマ
@@ -74,87 +44,8 @@ const hospitalSchema = z.object({
 
 type HospitalFormValues = z.infer<typeof hospitalSchema>;
 
-// ============================================================
-// 動作確認用モックデータ
-// ▼▼▼ バックエンド接続後、このブロックと下記useEffect内の切り替えは必ず削除し、
-//     元のapiFetch呼び出しのみに戻すこと ▼▼▼
-// ============================================================
-
-const MOCK_PROFILE: Profile = {
-  id: "mock-profile-id",
-  line_user_id: null,
-  is_premium: false,
-  stripe_customer_id: null,
-  pet_id: "mock-pet-id",
-  notification_time: "morning",
-  created_at: "2026-06-01T00:00:00.000Z",
-};
-
-const MOCK_PET: Pet = {
-  id: "mock-pet-id",
-  name: "むぎ",
-  species: "dog",
-  gender: "female",
-  birthday: "2023-04-01",
-  illness: "アレルギー性皮膚炎",
-  hospital_name: "ミズ動物病院",
-  hospital_phone: "0312345678",
-  hospital_address: "東京都渋谷区〇〇1-2-3",
-  hospital_card_image_url: null,
-  insurance_card_image_url: null,
-  created_at: "2026-06-01T00:00:00.000Z",
-};
-
-// ▲▲▲ 動作確認用モックデータここまで ▲▲▲
-
-const MOCK_PET_LIST: Pet[] = [
-  MOCK_PET,
-  {
-    id: "mock-pet-id-2",
-    name: "もも",
-    species: "cat",
-    gender: "female",
-    birthday: "2022-09-10",
-    illness: null,
-    hospital_name: "ミスペットクリニック",
-    hospital_phone: "0398765432",
-    hospital_address: "東京都新宿区〇〇1-2-3",
-    hospital_card_image_url: null,
-    insurance_card_image_url: null,
-    created_at: "2026-06-01T00:00:00.000Z",
-  },
-];
-
 // ▼ 動作確認用フラグ：バックエンド接続後は false に変更、または関連コードを削除すること
 const USE_MOCK_DATA = true;
-
-// ============================================================
-// Supabase Storageへの画像アップロード共通処理
-// 診察券・保険証は「1匹に1枚」のため、同じパスへupsert（上書き）する。
-// バケット名: pet-images（Public bucket・5MB制限・jpg/png/webpのみ許可で作成済み）
-// ============================================================
-
-async function uploadPetImage(
-  petId: string,
-  file: File,
-  fileName: "hospital-card" | "insurance-card"
-): Promise<string> {
-  const fileExt = file.name.split(".").pop();
-  const path = `${petId}/${fileName}.${fileExt}`;
-
-  const { error } = await supabase.storage
-    .from("pet-images")
-    .upload(path, file, { upsert: true });
-
-  if (error) {
-    throw new Error(
-      `画像のアップロードに失敗しました（${fileName === "hospital-card" ? "診察券" : "保険証"}）`
-    );
-  }
-
-  const { data } = supabase.storage.from("pet-images").getPublicUrl(path);
-  return data.publicUrl;
-}
 
 export default function HospitalPage() {
   const router = useRouter();
@@ -568,7 +459,7 @@ export default function HospitalPage() {
         </div>
       </Modal>
 
-      <div className="fixed bottom-0 left-0 right-0">
+      <div className="fixed bottom-0 left-0 right-0 mx-auto w-full max-w-md">
         <BottomNavigation />
       </div>
     </div>
