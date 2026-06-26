@@ -12,9 +12,9 @@ import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { supabase } from "@/lib/supabase";
-import { TodoCard } from "./_components/TodoCard";
-import { ScheduleCard } from "./_components/ScheduleCard";
-import { formatDateLabel, formatDaysUntil } from "@/lib/dateFormat";
+import { formatDateLabel } from "@/lib/dateFormat";
+import { TodoSection } from "./_components/TodoSection";
+import { ScheduleSection } from "./_components/ScheduleSection";
 import type { Profile, Pet, Todo, Schedule } from "./_components/types";
 import {
   MOCK_PROFILE,
@@ -138,6 +138,16 @@ export default function CareHomePage() {
   // ToDo関連のイベントハンドラ
   // ------------------------------------------------------------
 
+  const handleStartAddTodo = () => {
+    setEditingTodoId(null);
+    resetTodoForm({ taskName: "" });
+    setIsTodoModalOpen(true);
+  };
+  
+  const handleRequestDeleteTodo = (todo: Todo) => {
+    setDeleteTarget({ type: "todo", id: todo.id, name: todo.task_name });
+  };
+
   const handleStartEditTodo = (todo: Todo) => {
     setEditingTodoId(todo.id);
     resetTodoForm({ taskName: todo.task_name });
@@ -206,6 +216,20 @@ export default function CareHomePage() {
   // ------------------------------------------------------------
   // 予定（Schedule）関連のイベントハンドラ
   // ------------------------------------------------------------
+
+  const handleStartAddSchedule = () => {
+    setEditingScheduleId(null);
+    resetScheduleForm({
+      title: "",
+      scheduledContent: "",
+      scheduledDate: "",
+    });
+    setIsScheduleModalOpen(true);
+  };
+
+  const handleRequestDeleteSchedule = (schedule: Schedule) => {
+    setDeleteTarget({ type: "schedule", id: schedule.id, name: schedule.title });
+  };
 
   const handleStartEditSchedule = (schedule: Schedule) => {
     setEditingScheduleId(schedule.id);
@@ -465,107 +489,23 @@ export default function CareHomePage() {
         )}
 
         {/* 今日のお世話ToDoチェックリスト */}
-        <section className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-md font-semibold text-[#6E5849]">
-              🐾 今日のお世話
-            </h2>
-            <button
-              type="button"
-              onClick={() => {
-                setEditingTodoId(null);
-                resetTodoForm({ taskName: "" });
-                setIsTodoModalOpen(true);
-              }}
-              className="flex min-h-11 items-center gap-1 rounded-lg border border-[#D8C0A8] px-2.5 text-xs font-bold text-[#993C1D]"
-            >
-              お世話を追加
-            </button>
-          </div>
-
-          {todos.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              今日のToDoはまだ登録されていません
-            </p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {todos.map((todo) => (
-                <TodoCard
-                  key={todo.id}
-                  taskName={todo.task_name}
-                  isCompleted={todo.is_completed}
-                  completedById={todo.completed_by_id}
-                  onToggle={() => handleToggleTodo(todo.id)}
-                  onDelete={() =>
-                    setDeleteTarget({
-                      type: "todo",
-                      id: todo.id,
-                      name: todo.task_name,
-                    })
-                  }
-                  onEdit={() => handleStartEditTodo(todo)}
-                />
-              ))}
-            </div>
-          )}
-        </section>
+        <TodoSection
+          todos={todos}
+          onAddClick={handleStartAddTodo}
+          onToggle={handleToggleTodo}
+          onDeleteRequest={handleRequestDeleteTodo}
+          onEdit={handleStartEditTodo}
+        />
 
         {/* 今後の予定一覧 */}
-        <section className="mt-6 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-md font-semibold text-[#6E5849]">
-              🗓️ 今後の予定
-            </h2>
-            <button
-              type="button"
-              onClick={() => {
-                setEditingScheduleId(null);
-                resetScheduleForm({
-                  title: "",
-                  scheduledContent: "",
-                  scheduledDate: "",
-                });
-                setIsScheduleModalOpen(true);
-              }}
-              className="flex min-h-11 items-center gap-1 rounded-lg border border-[#D8C0A8] px-2.5 text-xs font-bold text-[#993C1D]"
-            >
-              予定を追加
-            </button>
-          </div>
-
-          {schedules.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              今後の予定はまだ登録されていません
-            </p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {schedules.map((schedule) => (
-                <ScheduleCard
-                  key={schedule.id}
-                  title={schedule.title}
-                  content={schedule.scheduled_content}
-                  // isMountedガード：マウント前（サーバー側プリレンダリング時）は
-                  // new Date()を使わず空文字にし、ハイドレーションミスマッチを防ぐ
-                  daysUntilLabel={
-                    isMounted
-                      ? formatDaysUntil(schedule.scheduled_date, new Date())
-                      : ""
-                  }
-                  isCompleted={schedule.is_completed}
-                  onToggle={() => handleToggleSchedule(schedule.id)}
-                  onDelete={() =>
-                    setDeleteTarget({
-                      type: "schedule",
-                      id: schedule.id,
-                      name: schedule.title,
-                    })
-                  }
-                  onEdit={() => handleStartEditSchedule(schedule)}
-                />
-              ))}
-            </div>
-          )}
-        </section>
+        <ScheduleSection
+          schedules={schedules}
+          isMounted={isMounted}
+          onAddClick={handleStartAddSchedule}
+          onToggle={handleToggleSchedule}
+          onDeleteRequest={handleRequestDeleteSchedule}
+          onEdit={handleStartEditSchedule}
+        />
       </main>
 
       {/* ToDo追加・編集用のModal */}
@@ -609,7 +549,8 @@ export default function CareHomePage() {
         open={isPetSwitchModalOpen}
         onOpenChange={setIsPetSwitchModalOpen}
         petList={petList}
-        currentPetId={pet?.id}onSwitch={handleSwitchPet}
+        currentPetId={pet?.id}
+        onSwitch={handleSwitchPet}
       />
 
       {/* 画面下部の共通ナビゲーション */}
