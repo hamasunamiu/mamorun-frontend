@@ -62,9 +62,6 @@ const todoFormSchema = z.object({
 
 type TodoFormValues = z.infer<typeof todoFormSchema>;
 
-// ▼ 動作確認用フラグ：バックエンド接続後は false に変更、または関連コードを削除すること
-const USE_MOCK_DATA = true;
-
 export default function CareHomePage() {
   // ------------------------------------------------------------
   // データ取得・Realtime同期（useCareHomeDataフックに集約）
