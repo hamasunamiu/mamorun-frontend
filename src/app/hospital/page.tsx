@@ -13,12 +13,12 @@ import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { EmergencyCallButton } from "@/components/common/EmergencyCallButton";
 import { Header } from "@/components/common/Header";
 import { BottomNavigation } from "@/components/common/BottomNavigation";
-import { Modal } from "@/components/common/Modal";
+import { PetSwitchModal } from "@/components/common/PetSwitchModal";
 import { Card } from "@/components/common/Card";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { uploadPetImage } from "@/lib/petImageUpload";
 import type { Profile, Pet } from "./_components/types";
-import { MOCK_PROFILE, MOCK_PET, MOCK_PET_LIST } from "./_components/mockData";
+import { MOCK_PET, MOCK_PET_LIST } from "./_components/mockData";
 
 // ============================================================
 // フォーム用Zodスキーマ
@@ -429,35 +429,13 @@ export default function HospitalPage() {
 
       {/* ペット切り替え用のModal（2匹以上の場合に表示）
           切り替え時、選んだペットの病院情報をフォームへ反映する */}
-      <Modal
+      <PetSwitchModal
         open={isPetSwitchModalOpen}
         onOpenChange={setIsPetSwitchModalOpen}
-        title="ペットを切り替える"
-      >
-        <div className="flex flex-col gap-2">
-          {petList.map((p) => {
-            const isSelected = p.id === pet?.id;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => handleSwitchPet(p)}
-                aria-pressed={isSelected}
-                className={`flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium ${
-                  isSelected
-                    ? "border-[#C4956A] bg-[#FBE9DD] text-[#993C1D]"
-                    : "border-border bg-background text-foreground"
-                }`}
-              >
-                <span aria-hidden="true">
-                  {p.species === "dog" ? "🐶" : "🐱"}
-                </span>
-                {p.name}
-              </button>
-            );
-          })}
-        </div>
-      </Modal>
+        petList={petList}
+        currentPetId={pet?.id}
+        onSwitch={handleSwitchPet}
+      />
 
       <div className="fixed bottom-0 left-0 right-0 mx-auto w-full max-w-md">
         <BottomNavigation />

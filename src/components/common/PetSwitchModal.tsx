@@ -1,7 +1,7 @@
 "use client";
 
 import { Modal } from "@/components/common/Modal";
-import type { Pet } from "./types";
+import type { Pet } from "@/types";
 
 type PetSwitchModalProps = {
   open: boolean;

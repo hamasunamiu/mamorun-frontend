@@ -12,7 +12,7 @@ import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { formatDateLabel } from "@/lib/dateFormat";
 import type { Pet, Todo, Schedule } from "./_components/types";
 import { useCareHomeData } from "./_components/useCareHomeData";
-import { PetSwitchModal } from "./_components/PetSwitchModal";
+import { PetSwitchModal } from "@/components/common/PetSwitchModal";
 import { DeleteConfirmModal } from "./_components/DeleteConfirmModal";
 import { TodoFormModal } from "./_components/TodoFormModal";
 import { ScheduleFormModal } from "./_components/ScheduleFormModal";
