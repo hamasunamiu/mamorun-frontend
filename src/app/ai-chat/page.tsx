@@ -41,9 +41,6 @@ export default function AiChatPage() {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
 
-    // TODO: POST /api/ai/chat
-    console.log("AI相談送信:", input);
-
     // ダミーのAI返答
     const aiMessage: Message = {
       role: "ai",
