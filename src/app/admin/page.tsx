@@ -3,13 +3,14 @@ import { useState } from "react";
 import { Header } from "@/components/common/Header";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { Modal } from "@/components/common/Modal";
+import { supabase } from "@/lib/supabase";
 
 export default function AdminPage() {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const handleLogout = async () => {
-    // TODO: Supabase Auth signOut
-    console.log("ログアウト");
+    await supabase.auth.signOut();
+    window.location.href = "/login";
     setIsLogoutModalOpen(false);
   };
 
