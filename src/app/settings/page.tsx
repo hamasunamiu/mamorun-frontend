@@ -38,11 +38,14 @@ export default function SettingsPage() {
       if (!session) return;
       setEmail(session.user.email ?? null);
 
-      const response = await fetch("http://localhost:3001/api/profiles/me", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
+      const response = await fetch(
+        "${process.env.NEXT_PUBLIC_API_BASE_URL}/api/profiles/me",
+        {
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
         },
-      });
+      );
 
       // ✅ 修正後：正常なときだけdataを取る
       if (response.ok) {
@@ -54,7 +57,7 @@ export default function SettingsPage() {
           const petId = result.data.pet_id;
           if (petId) {
             const petRes = await fetch(
-              `http://localhost:3001/api/pets/${petId}`,
+              `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/pets/${petId}`,
               {
                 headers: {
                   Authorization: `Bearer ${session.access_token}`,
@@ -84,13 +87,16 @@ export default function SettingsPage() {
       data: { session },
     } = await supabase.auth.getSession();
 
-    const response = await fetch("http://localhost:3001/api/stripe/checkout", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${session?.access_token}`,
-        "Content-Type": "application/json",
+    const response = await fetch(
+      "${process.env.NEXT_PUBLIC_API_BASE_URL}/api/stripe/checkout",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+          "Content-Type": "application/json",
+        },
       },
-    });
+    );
 
     const result = await response.json();
     if (result.data?.url) {
@@ -108,14 +114,22 @@ export default function SettingsPage() {
       data: { session },
     } = await supabase.auth.getSession();
 
-    await fetch("http://localhost:3001/api/profiles/me", {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${session?.access_token}`,
-        "Content-Type": "application/json",
+    const response = await fetch(
+      "${process.env.NEXT_PUBLIC_API_BASE_URL}/api/profiles/me",
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ line_user_id: lineUserId }),
       },
-      body: JSON.stringify({ line_user_id: lineUserId }),
-    });
+    );
+
+    if (!response.ok) {
+      alert("LINE連携に失敗しました。");
+      return;
+    }
 
     setIsLineLinked(true);
   };
@@ -125,14 +139,22 @@ export default function SettingsPage() {
       data: { session },
     } = await supabase.auth.getSession();
 
-    await fetch("http://localhost:3001/api/profiles/me", {
-      method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${session?.access_token}`,
-        "Content-Type": "application/json",
+    const response = await fetch(
+      "${process.env.NEXT_PUBLIC_API_BASE_URL}/api/profiles/me",
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ line_user_id: null }),
       },
-      body: JSON.stringify({ line_user_id: null }),
-    });
+    );
+
+    if (!response.ok) {
+      alert("LINE連携の解除に失敗しました。");
+      return;
+    }
 
     setIsLineLinked(false);
     setIsLineUnlinkModalOpen(false);
@@ -143,13 +165,21 @@ export default function SettingsPage() {
       data: { session },
     } = await supabase.auth.getSession();
 
-    await fetch("http://localhost:3001/api/stripe/cancel", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${session?.access_token}`,
-        "Content-Type": "application/json",
+    const response = await fetch(
+      "${process.env.NEXT_PUBLIC_API_BASE_URL}/api/stripe/cancel",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+          "Content-Type": "application/json",
+        },
       },
-    });
+    );
+
+    if (!response.ok) {
+      alert("解約処理に失敗しました。");
+      return;
+    }
 
     setIsPremium(false);
     setIsPremiumCancelModalOpen(false);
@@ -279,8 +309,8 @@ export default function SettingsPage() {
                         const {
                           data: { session },
                         } = await supabase.auth.getSession();
-                        await fetch(
-                          "http://localhost:3001/api/notifications/line/remind",
+                        const response = await fetch(
+                          "${process.env.NEXT_PUBLIC_API_BASE_URL}/api/notifications/line/remind",
                           {
                             method: "POST",
                             headers: {
@@ -288,6 +318,10 @@ export default function SettingsPage() {
                             },
                           },
                         );
+                        if (!response.ok) {
+                          alert("LINEの送信に失敗しました。");
+                          return;
+                        }
                         alert("LINEを送信しました！");
                       };
                       sendLineTest();
@@ -342,16 +376,23 @@ export default function SettingsPage() {
                     const {
                       data: { session },
                     } = await supabase.auth.getSession();
-                    await fetch("http://localhost:3001/api/profiles/me", {
-                      method: "PATCH",
-                      headers: {
-                        Authorization: `Bearer ${session?.access_token}`,
-                        "Content-Type": "application/json",
+                    const response = await fetch(
+                      "${process.env.NEXT_PUBLIC_API_BASE_URL}/api/profiles/me",
+                      {
+                        method: "PATCH",
+                        headers: {
+                          Authorization: `Bearer ${session?.access_token}`,
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                          notification_time: notificationTime,
+                        }),
                       },
-                      body: JSON.stringify({
-                        notification_time: notificationTime,
-                      }),
-                    });
+                    );
+                    if (!response.ok) {
+                      alert("通知時間の保存に失敗しました。");
+                      return;
+                    }
                     alert("通知時間を保存しました！");
                   }}
                 >
