@@ -223,51 +223,67 @@ export default function CareHomePage() {
     setIsScheduleModalOpen(true);
   };
 
-  const handleToggleSchedule = (scheduleId: string) => {
-    // 本来はPATCH /api/schedules/:scheduleIdを呼ぶ必要があるが、バックエンド未接続のため
-    // 現時点ではフロント側のstateのみを更新する（バックエンド接続後にAPI呼び出しを追加する）
-    setSchedules((prevSchedules) =>
-      prevSchedules.map((schedule) =>
-        schedule.id === scheduleId
-          ? { ...schedule, is_completed: !schedule.is_completed }
-          : schedule,
-      ),
-    );
-  };
+  const handleToggleSchedule = async (scheduleId: string) => {
+    const schedule = schedules.find((s) => s.id === scheduleId);
+    if (!schedule) return;
+
+    try {
+      await apiFetch(`/api/schedules:${scheduleId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_completed: !schedule.is_completed }),
+      });
+      setSchedules((prevSchedules) =>
+        prevSchedules.map((s) =>
+          s.id === scheduleId ? { ...s, is_completed: !s.is_completed } : s
+    )
+   );
+  } catch (err) {
+   console.error("スケジュール完了切り替え失敗:", err);
+  }
+};
 
   // editingScheduleIdの有無で「新規追加」か「既存の更新」かを分岐する
-  const onSubmitSchedule = (values: ScheduleFormValues) => {
+  const onSubmitSchedule = async (values: ScheduleFormValues) => {
     if (editingScheduleId) {
-      // 編集モード：本来はPATCH /api/schedules/:scheduleIdを呼ぶ必要があるが、
-      // バックエンド未接続のため現時点ではフロント側のstateのみを更新する
-      setSchedules((prevSchedules) =>
-        prevSchedules.map((schedule) =>
-          schedule.id === editingScheduleId
-            ? {
-                ...schedule,
-                title: values.title,
-                scheduled_content: values.scheduledContent || null,
-                scheduled_date: values.scheduledDate,
-              }
-            : schedule,
-        ),
-      );
+      try {
+        await apiFetch(`/api/schedules/${editingScheduleId}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            title: values.title,
+            scheduled_content: values.scheduledContent || null,
+            scheduled_date: values.scheduledDate,
+          }),
+        });
+        setSchedules((prevSchedules) =>
+          prevSchedules.map((schedule) =>
+            schedule.id === editingScheduleId
+              ? {
+                  ...schedule,
+                  title: values.title,
+                  schedule_content: values.scheduledContent || null,
+                  scheduled_date: values.scheduledDate,
+                }
+              : schedule
+            )
+          );
+        } catch (err) {
+          console.error("スケジュール更新失敗:", err);
+        }
     } else {
-      // 新規追加モード
-      // ★注記：react-hooks/purity が、イベントハンドラ内のDate.now()呼び出しを
-      // レンダリング中の呼び出しと誤検知する既知の問題のため、id行のみ無効化する。
-      // 参考：https://github.com/facebook/react/issues/34834
-      const newSchedule: Schedule = {
-        // eslint-disable-next-line react-hooks/purity
-        id: `schedule-${Date.now()}`, // ※仮のID。本来はバックエンドが発行するUUIDを使う
-        pet_id: pet?.id ?? "",
-        title: values.title,
-        scheduled_content: values.scheduledContent || null,
-        scheduled_date: values.scheduledDate,
-        is_completed: false,
-        created_at: new Date().toISOString(),
-      };
-      setSchedules((prevSchedules) => [...prevSchedules, newSchedule]);
+      //新規追加モード
+      try {
+        const newSchedule = await apiFetch<Schedule>("/api/schedules", {
+          method: "POST",
+          body: JSON.stringify({
+              title: values.title,
+              scheduled_content: values.scheduledContent || null,
+              scheduled_date: values.scheduledDate,
+          }),
+        });
+        setSchedules((prevSchedules) => [...prevSchedules, newSchedule]);
+       } catch (err) {
+        console.error("スケジュール追加失敗:", err);
+       }
     }
 
     resetScheduleForm();
