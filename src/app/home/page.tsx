@@ -228,7 +228,7 @@ export default function CareHomePage() {
     if (!schedule) return;
 
     try {
-      await apiFetch(`/api/schedules:${scheduleId}`, {
+      await apiFetch(`/api/schedules/${scheduleId}`, {
         method: "PATCH",
         body: JSON.stringify({ is_completed: !schedule.is_completed }),
       });
