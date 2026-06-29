@@ -10,14 +10,15 @@ export default function SettingsPage() {
   const [notificationTime, setNotificationTime] = useState<"morning" | "night">(
     "morning",
   );
-  const [isPremium, setIsPremium] = useState(false);
-  const [isLineLinked, setIsLineLinked] = useState(false);
+  const [isPremium, setIsPremium] = useState(true);
+  const [isLineLinked, setIsLineLinked] = useState(true);
   const [isPetModalOpen, setIsPetModalOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLineUnlinkModalOpen, setIsLineUnlinkModalOpen] = useState(false);
   const [isPremiumCancelModalOpen, setIsPremiumCancelModalOpen] =
     useState(false);
+  const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -25,6 +26,7 @@ export default function SettingsPage() {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) return;
+      setEmail(session.user.email ?? null);
 
       const response = await fetch("http://localhost:3001/api/profiles/me", {
         headers: {
@@ -139,7 +141,9 @@ export default function SettingsPage() {
           </p>
           <div className="flex items-center justify-between py-1.5">
             <span className="text-sm text-gray-500">メールアドレス</span>
-            <span className="text-xs text-gray-700">mano@example.com</span>
+            <span className="text-xs text-gray-700">
+              {email ?? "読み込み中..."}
+            </span>
           </div>
           <div className="flex items-center justify-between py-1.5">
             <span className="text-sm text-gray-500">プラン</span>
