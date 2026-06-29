@@ -3,17 +3,12 @@
 import { ChevronDown } from "lucide-react";
 
 type HeaderProps = {
-  /** シンプルなタイトル表示用（ログイン・設定画面など） */
   title?: string;
-  /** ペット名表示用（お世話ホーム・病院情報画面など） */
   petName?: string;
-  /** ペットの種類（名前の左に犬・猫の絵文字を表示するために使用） */
   petSpecies?: "dog" | "cat";
-  /** ヘッダー上部の日付表示（例：2026年6月12日（金）） */
+  suffix?: string;
   dateLabel?: string;
-  /** ペット名タップ時の切り替え処理（2匹以上の場合のプルダウン） */
   onPetSwitch?: () => void;
-  /** 右側に表示する追加要素（緊急発信ボタンなど） */
   rightSlot?: React.ReactNode;
 };
 
@@ -21,6 +16,7 @@ export function Header({
   title,
   petName,
   petSpecies,
+  suffix,
   dateLabel,
   onPetSwitch,
   rightSlot,
@@ -45,6 +41,7 @@ export function Header({
                 {petSpecies === "dog" ? "🐶" : "🐱"}
               </span>
             )} 
+            {suffix && <span>{suffix}</span>}
             <ChevronDown className="h-4 w-4 text-muted-foreground" />
           </button>
         ) : (

@@ -5,16 +5,7 @@ import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { supabase } from "@/lib/supabase";
 import type { Profile, Pet, Todo, Schedule } from "./types";
-import {
-  MOCK_PROFILE,
-  MOCK_PET,
-  MOCK_PET_LIST,
-  MOCK_TODOS,
-  MOCK_SCHEDULES,
-} from "./mockData";
 
-// ▼ 動作確認用フラグ：バックエンド接続後は false に変更、または関連コードを削除すること
-const USE_MOCK_DATA = true;
 
 export function useCareHomeData() {
   const router = useRouter();
@@ -41,20 +32,6 @@ export function useCareHomeData() {
       setIsLoading(true);
       setLoadError(null);
 
-      // ▼▼▼ 動作確認用：バックエンド未接続のため一時的にモックデータを使用 ▼▼▼
-      // バックエンド接続後、この if ブロックを削除し、下のコメントアウトを元に戻すこと
-      if (USE_MOCK_DATA) {
-        await new Promise((resolve) => setTimeout(resolve, 300)); // ローディング表示の確認用に少し待たせる
-        setProfile(MOCK_PROFILE);
-        setPet(MOCK_PET);
-        setPetList(MOCK_PET_LIST);
-        setTodos(MOCK_TODOS);
-        setSchedules(MOCK_SCHEDULES);
-        setIsLoading(false);
-        return;
-      }
-      // ▲▲▲ 動作確認用ここまで ▲▲▲
-
       try {
         const profileData = await apiFetch<Profile>("/api/profiles/me");
         setProfile(profileData);
@@ -65,8 +42,31 @@ export function useCareHomeData() {
           return;
         }
 
-        const petData = await apiFetch<Pet>(`/api/pets/${profileData.pet_id}`);
+        //ペット・ToDo・スケジュール・ペット一覧を並行取得
+      const [petData, todosData, schedulesData, petListData] = await Promise.all([
+        apiFetch<Pet>(`/api/pets/${profileData.pet_id}`),
+        apiFetch<Todo[]>("/api/todos"),
+        apiFetch<Schedule[]>("/api/schedules"),
+        apiFetch<Pet[]>("/api/pets"),
+      ]);
+
+      //localStorageに保存されたペットIDがあればそちらを優先
+      const savedPetId = localStorage.getItem('selectedPetId');
+      if (savedPetId && savedPetId !== profileData.pet_id) {
+        try {
+          const savedPetData = await apiFetch<pet>(`/api/pets/${savedPetId}`);
+          setPet(savedPetData);
+        } catch {
+          setPet(petData);
+          localStorage.removeItem('selectedPetId');
+        }
+      } else {
         setPet(petData);
+      }
+      setTodos(todosData ?? []);
+      setSchedules(schedulesData  ?? []);
+      setPetList(petListData ?? []);
+
       } catch (err) {
         setLoadError(
           err instanceof ApiError
@@ -87,7 +87,7 @@ export function useCareHomeData() {
 
   useEffect(() => {
     // マウント完了をフラグで示すだけにする（cascading render警告を回避）
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     setIsMounted(true);
   }, []);
 

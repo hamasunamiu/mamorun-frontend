@@ -90,7 +90,7 @@ export function ImageUploader({
           <img
             src={previewUrl}
             alt={`${label}のプレビュー`}
-            className="h-32 w-full object-cover"
+            className="h-72 w-full object-cover"
           />
           <button
             type="button"
