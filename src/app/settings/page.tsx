@@ -5,14 +5,24 @@ import { BottomNavigation } from "@/components/common/BottomNavigation";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { Modal } from "@/components/common/Modal";
 import { supabase } from "@/lib/supabase";
+import { PetEditModal } from "@/components/settings/PetEditModal";
 
 export default function SettingsPage() {
   const [notificationTime, setNotificationTime] = useState<"morning" | "night">(
     "morning",
   );
-  const [isPremium, setIsPremium] = useState(true);
-  const [isLineLinked, setIsLineLinked] = useState(true);
+  const [isPremium, setIsPremium] = useState(false);
+  const [isLineLinked, setIsLineLinked] = useState(false);
   const [isPetModalOpen, setIsPetModalOpen] = useState(false);
+  const [isPetEditModalOpen, setIsPetEditModalOpen] = useState(false);
+  const [currentPet, setCurrentPet] = useState<{
+    id: string;
+    name: string;
+    species: "dog" | "cat";
+    gender: "male" | "female";
+    birthday: string;
+    illness?: string;
+  } | null>(null);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLineUnlinkModalOpen, setIsLineUnlinkModalOpen] = useState(false);
@@ -40,6 +50,22 @@ export default function SettingsPage() {
         if (result.data) {
           setIsPremium(result.data.is_premium);
           setIsLineLinked(!!result.data.line_user_id);
+          // ペット情報取得
+          const petId = result.data.pet_id;
+          if (petId) {
+            const petRes = await fetch(
+              `http://localhost:3001/api/pets/${petId}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+              },
+            );
+            const petData = await petRes.json();
+            if (petData.data) {
+              setCurrentPet(petData.data);
+            }
+          }
         }
       }
     };
@@ -159,23 +185,36 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* ペットを追加する */}
-        <div
-          className="bg-white rounded-2xl border border-[#e0d6ce] p-4 cursor-pointer"
-          onClick={() => setIsPetModalOpen(true)}
-        >
+        {/* ペット情報 */}
+        <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
           <p className="text-xs font-medium text-[#993C1D] mb-3">
-            🐾 ペットを追加する
+            🐾 ペット情報
           </p>
-          <div className="flex items-center justify-between py-1">
+          <button
+            className="flex items-center justify-between py-1 w-full"
+            onClick={() => setIsPetEditModalOpen(true)}
+          >
+            <div className="flex items-center gap-3 text-sm text-gray-800">
+              <div className="w-8 h-8 bg-[#FAECE7] rounded-lg flex items-center justify-center">
+                ✏️
+              </div>
+              ペット情報を編集する
+            </div>
+            <span className="text-gray-400">›</span>
+          </button>
+          <div className="border-t border-[#f0ece8] my-2" />
+          <button
+            className="flex items-center justify-between py-1 w-full"
+            onClick={() => setIsPetModalOpen(true)}
+          >
             <div className="flex items-center gap-3 text-sm text-gray-800">
               <div className="w-8 h-8 bg-[#FAECE7] rounded-lg flex items-center justify-center">
                 ➕
               </div>
-              新しいペットを登録する
+              新しいペットを追加する
             </div>
             <span className="text-gray-400">›</span>
-          </div>
+          </button>
         </div>
 
         {/* 家族を招待する */}
@@ -460,6 +499,13 @@ export default function SettingsPage() {
             </PrimaryButton>
           </div>
         }
+      />
+
+      <PetEditModal
+        open={isPetEditModalOpen}
+        onOpenChange={setIsPetEditModalOpen}
+        pet={currentPet}
+        onSaved={() => {}}
       />
 
       <div className="fixed bottom-0 left-0 right-0">
