@@ -143,6 +143,12 @@ export default function RegisterPage() {
     // ② JIT同期APIを1度だけ呼び出す
     try {
       await apiFetch("/api/auth/sync", { method: "POST" });
+
+      //display_nameを更新
+      await apiFetch("/api/profiles/me", {
+        method: "PATCH",
+        body: JSON.stringify({ display_name: values.displayName }),
+      });
     } catch (err) {
       setAuthError(
         err instanceof ApiError
