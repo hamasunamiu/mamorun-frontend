@@ -18,20 +18,20 @@ export function HospitalDisplayView({
       <Card>
         <div className="flex flex-col gap-3">
           <div>
-            <p className="text-xs text-muted-foreground">病院名</p>
-            <p className="text-sm text-foreground">
+            <p className="text-sm text-muted-foreground">病院名</p>
+            <p className="text-lg text-foreground">
               {pet?.hospital_name || "未登録"}
             </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">電話番号</p>
-            <p className="text-sm text-foreground">
+            <p className="text-sm text-muted-foreground">電話番号</p>
+            <p className="text-lg text-foreground">
               {pet?.hospital_phone || "未登録"}
             </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">住所</p>
-            <p className="text-sm text-foreground">
+            <p className="text-sm text-muted-foreground">住所</p>
+            <p className="text-lg text-foreground">
               {pet?.hospital_address || "未登録"}
             </p>
           </div>
@@ -39,9 +39,18 @@ export function HospitalDisplayView({
       </Card>
 
       <Card>
+        <div>
+          <p className="text-sm text-muted-foreground">持病</p>
+          <p className="text-lg text-foreground whitespace-pre-wrap">
+            {pet?.illness || "未登録"}
+          </p>
+        </div>
+      </Card>
+
+      <Card>
         <div className="flex flex-col gap-4">
           <div>
-            <p className="text-xs text-muted-foreground mb-1.5">診察券</p>
+            <p className="text-sm text-muted-foreground mb-1.5">診察券</p>
             {pet?.hospital_card_image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -50,11 +59,11 @@ export function HospitalDisplayView({
                 className="h-72 w-full rounded-md border border-border object-cover"
               />
             ) : (
-              <p className="text-sm text-muted-foreground">未登録</p>
+              <p className="text-lg text-muted-foreground">未登録</p>
             )}
           </div>
           <div>
-            <p className="text-xs text-muted-foreground mb-1.5">保険証</p>
+            <p className="text-sm text-muted-foreground mb-1.5">保険証</p>
             {pet?.insurance_card_image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -63,7 +72,7 @@ export function HospitalDisplayView({
                 className="h-72 w-full rounded-md border border-border object-cover"
               />
             ) : (
-              <p className="text-sm text-muted-foreground">未登録</p>
+              <p className="text-lg text-muted-foreground">未登録</p>
             )}
           </div>
         </div>
