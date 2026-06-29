@@ -24,7 +24,7 @@ import { HospitalEditView } from "./_components/HospitalEditView";
 // （セキュリティ設計書 §4②・画面設計書 UI-007バリデーション準拠）
 // ============================================================
 
-const hospitalSchema = z.object({
+export const hospitalSchema = z.object({
   hospital_name: z
     .string()
     .min(1, "病院名を入力してください")
@@ -131,7 +131,8 @@ export default function HospitalPage() {
     };
 
     fetchInitialData();
-  }, [router, reset]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router]);
 
   // ペットを切り替えたら、選んだペットの病院情報をフォームへ反映し直す。
   // home画面のペット切り替えと違い、病院情報画面では「表示中のフォーム値」も
