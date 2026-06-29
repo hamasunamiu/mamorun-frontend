@@ -222,6 +222,7 @@ export default function RegisterPage() {
         </p>
 
         <form
+          noValidate
           // eslint-disable-next-line react-hooks/refs -- handleSubmitはイベントハンドラを返すだけで、render中にonSubmit内のref.currentを読むことはないため誤検知
           onSubmit={handleSubmit(onSubmit)}
           className="mt-6 flex flex-col gap-6"
