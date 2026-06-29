@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link"; // 
+import Link from "next/link"; //
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,18 +13,22 @@ import { ToggleOptionGroup } from "@/components/common/ToggleOptionGroup";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
-import { Modal } from "@/components/common/Modal"; 
+import { Modal } from "@/components/common/Modal";
 import { supabase } from "@/lib/supabase";
 import { apiFetch, ApiError } from "@/lib/api-client";
 
-const INVITE_ERROR_MESSAGES: Record<string, { title: string; description: string }> = {
+const INVITE_ERROR_MESSAGES: Record<
+  string,
+  { title: string; description: string }
+> = {
   INVALID_INVITE_TOKEN: {
     title: "招待リンクが無効です",
     description: "無効な招待URLです。",
   },
   INVITE_TOKEN_GONE: {
     title: "招待リンクの有効期限が切れています",
-    description: "この招待リンクは有効期限が切れているか、すでに使用されています。",
+    description:
+      "この招待リンクは有効期限が切れているか、すでに使用されています。",
   },
   ALREADY_PAIRED: {
     title: "すでに参加済みです",
@@ -98,9 +102,12 @@ export default function RegisterPage() {
   // 通信エラーやペット登録失敗時には誤ってリンクが出ないようにする
   const [isEmailDuplicateError, setIsEmailDuplicateError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [inviteError, setInviteError] = useState<{ title: string; description: string } | null>(
-    null
-  );
+  // レンダリングを待たずに即座に参照できる二重送信防止用ガード
+  const isSubmittingRef = useRef(false);
+  const [inviteError, setInviteError] = useState<{
+    title: string;
+    description: string;
+  } | null>(null);
 
   const {
     register,
@@ -123,6 +130,10 @@ export default function RegisterPage() {
   });
 
   const onSubmit = async (values: RegisterFormValues) => {
+    // 連続クリック・連続Enterキーによる二重送信を防止
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+
     setAuthError(null);
     setIsEmailDuplicateError(false); // 送信開始時にリセット
     setIsSubmitting(true);
@@ -134,9 +145,12 @@ export default function RegisterPage() {
     });
 
     if (signUpError) {
-      setAuthError("このメールアドレスはすでに登録されています。すでにアカウントをお持ちの場合はログインをお試しください。解決しない場合はお問い合わせください。");
+      setAuthError(
+        "このメールアドレスはすでに登録されています。すでにアカウントをお持ちの場合はログインをお試しください。解決しない場合はお問い合わせください。",
+      );
       setIsEmailDuplicateError(true); // ログイン誘導リンクを表示するフラグを立てる
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
       return;
     }
 
@@ -147,9 +161,10 @@ export default function RegisterPage() {
       setAuthError(
         err instanceof ApiError
           ? err.message
-          : "通信エラーが発生しました。時間をおいて再度お試しください。"
+          : "通信エラーが発生しました。時間をおいて再度お試しください。",
       );
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
       return;
     }
 
@@ -166,9 +181,10 @@ export default function RegisterPage() {
         setAuthError(
           err instanceof ApiError
             ? err.message
-            : "ペット情報の登録に失敗しました。時間をおいて再度お試しください。"
+            : "ペット情報の登録に失敗しました。時間をおいて再度お試しください。",
         );
         setIsSubmitting(false);
+        isSubmittingRef.current = false;
         return;
       }
     }
@@ -186,11 +202,13 @@ export default function RegisterPage() {
             : INVITE_ERROR_FALLBACK;
         setInviteError(errorContent);
         setIsSubmitting(false);
+        isSubmittingRef.current = false;
         return;
       }
     }
 
     router.push("/home");
+    // 成功時はページ遷移するため isSubmittingRef のリセットは不要
   };
 
   return (
@@ -203,7 +221,11 @@ export default function RegisterPage() {
             : "ペット情報もあわせて登録しましょう"}
         </p>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="mt-6 flex flex-col gap-6">
+        <form
+          // eslint-disable-next-line react-hooks/refs -- handleSubmitはイベントハンドラを返すだけで、render中にonSubmit内のref.currentを読むことはないため誤検知
+          onSubmit={handleSubmit(onSubmit)}
+          className="mt-6 flex flex-col gap-6"
+        >
           {/* アカウント情報 */}
           <section className="flex flex-col gap-3 rounded-2xl bg-white p-4">
             <h2 className="text-sm font-semibold text-[#6E5849]">
