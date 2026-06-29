@@ -32,7 +32,6 @@ export default function TimelinePage() {
   const [imageUploaderKey, setImageUploaderKey] = useState(0);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // 一覧取得
   useEffect(() => {
     const fetchLogs = async () => {
       try {
@@ -40,6 +39,10 @@ export default function TimelinePage() {
           "/api/health-logs",
         );
         setLogs(data.data ?? []);
+        const profile = await apiFetch<{ data: { id: string } }>(
+          "/api/profiles/me",
+        );
+        setCurrentUserId(profile.data.id);
       } catch (err) {
         if (err instanceof ApiError) {
           setError(err.message);
@@ -55,7 +58,6 @@ export default function TimelinePage() {
 
   const isSubmitDisabled = title.trim() === "" || isSubmitting;
 
-  // 投稿処理
   const handleSubmit = async () => {
     if (isSubmitDisabled) return;
     setIsSubmitting(true);
@@ -65,7 +67,6 @@ export default function TimelinePage() {
         body: JSON.stringify({
           title,
           detail_memo: memo,
-          // 画像URLは別途Supabase Storageへアップロード後に設定
         }),
       });
       setLogs((prev) => [newLog, ...prev]);
@@ -84,7 +85,6 @@ export default function TimelinePage() {
     }
   };
 
-  // 削除処理
   const handleDeleteClick = (id: string) => {
     setDeleteTargetId(id);
     setIsDeleteModalOpen(true);
@@ -114,7 +114,6 @@ export default function TimelinePage() {
       <Header petName="むぎ" dateLabel="6月23日（月）" />
 
       <div className="p-4 flex flex-col gap-3">
-        {/* 投稿フォーム */}
         <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
           <p className="text-sm font-medium text-[#993C1D] mb-3">
             ✏️ 今日の記録を追加
@@ -151,7 +150,6 @@ export default function TimelinePage() {
           </PrimaryButton>
         </div>
 
-        {/* タイムライン一覧 */}
         {isLoading ? (
           <div className="text-center text-sm text-gray-400 py-8">
             読み込み中...
@@ -197,17 +195,20 @@ export default function TimelinePage() {
                 </p>
               )}
               {currentUserId === log.created_by_id && (
-  <div className="flex justify-end border-t border-[#f0e8e0] pt-2">
-    <button
-      className="text-xs text-gray-400"
-      onClick={() => handleDeleteClick(log.id)}
-    >
-      🗑 削除
-    </button>
-  </div>
-)}
+                <div className="flex justify-end border-t border-[#f0e8e0] pt-2">
+                  <button
+                    className="text-xs text-gray-400"
+                    onClick={() => handleDeleteClick(log.id)}
+                  >
+                    🗑 削除
+                  </button>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
 
-      {/* 削除確認モーダル */}
       <Modal
         open={isDeleteModalOpen}
         onOpenChange={(open) => setIsDeleteModalOpen(open)}
