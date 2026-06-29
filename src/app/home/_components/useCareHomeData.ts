@@ -49,7 +49,20 @@ export function useCareHomeData() {
         apiFetch<Schedule[]>("/api/schedules"),
         apiFetch<Pet[]>("/api/pets"),
       ]);
-      setPet(petData);
+
+      //localStorageに保存されたペットIDがあればそちらを優先
+      const savedPetId = localStorage.getItem('selectedPetId');
+      if (savedPetId && savedPetId !== profileData.pet_id) {
+        try {
+          const savedPetData = await apiFetch<pet>(`/api/pets/${savedPetId}`);
+          setPet(savedPetData);
+        } catch {
+          setPet(petData);
+          localStorage.removeItem('selectedPetId');
+        }
+      } else {
+        setPet(petData);
+      }
       setTodos(todosData ?? []);
       setSchedules(schedulesData  ?? []);
       setPetList(petListData ?? []);

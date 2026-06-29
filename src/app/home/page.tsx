@@ -315,6 +315,7 @@ export default function CareHomePage() {
 
   const handleSwitchPet = (selectedPet: Pet) => {
     setPet(selectedPet);
+    localStorage.setItem('selectedPetId', selectedPet.id);
     setIsPetSwitchModalOpen(false);
   };
 
