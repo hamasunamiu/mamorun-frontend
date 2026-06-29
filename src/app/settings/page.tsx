@@ -234,7 +234,7 @@ export default function SettingsPage() {
                     </button>
                   </div>
                   <button
-                    className="text-xs text-gray-400 border border-[#e0d6ce] rounded-lg py-1.5 px-3 w-full"
+                    className="text-base bg-transparent border-none p-0 cursor-pointer self-start"
                     onClick={() => {
                       const sendLineTest = async () => {
                         const {
@@ -254,7 +254,7 @@ export default function SettingsPage() {
                       sendLineTest();
                     }}
                   >
-                    📨 LINEテスト送信（デモ用）
+                    📨
                   </button>
                 </div>
               ) : (
