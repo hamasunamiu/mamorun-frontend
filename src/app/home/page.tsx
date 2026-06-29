@@ -260,7 +260,7 @@ export default function CareHomePage() {
               ? {
                   ...schedule,
                   title: values.title,
-                  schedule_content: values.scheduledContent || null,
+                  scheduled_content: values.scheduledContent || null,
                   scheduled_date: values.scheduledDate,
                 }
               : schedule
