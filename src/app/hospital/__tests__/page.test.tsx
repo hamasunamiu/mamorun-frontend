@@ -108,9 +108,13 @@ describe("HospitalPage", () => {
   });
 
   describe("状態表示", () => {
-    test("UT-F-301: isLoading=trueの状態でLoadingSpinnerが表示される", () => {
+    test("UT-F-301: isLoading=trueの状態でLoadingSpinnerが表示される", async () => {
       render(<HospitalPage />);
       expect(screen.getByRole("status")).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      });
     });
 
     test("UT-F-302: loadErrorが存在する状態でErrorMessageが表示される", async () => {

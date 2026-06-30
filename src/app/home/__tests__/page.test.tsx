@@ -80,9 +80,11 @@ const mockSchedule: Schedule = {
   created_at: "2026-06-29T00:00:00.000Z",
 };
 
-// useCareHomeDataのデフォルトの返り値（各テストで上書きして使う）
-// setPet/setTodos/setSchedulesはjest.fn()にしておき、呼ばれたかどうかを確認できるようにする
-function createMockHookReturn(overrides = {}) {
+type MockCareHomeData = ReturnType<typeof useCareHomeData>;
+
+function createMockHookReturn(
+  overrides: Partial<MockCareHomeData> = {},
+): MockCareHomeData {
   return {
     profile: mockProfile,
     pet: mockPet,
@@ -102,7 +104,10 @@ function createMockHookReturn(overrides = {}) {
 describe("CareHomePage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    window.localStorage.clear();
+
     (useCareHomeData as jest.Mock).mockReturnValue(createMockHookReturn());
+
     (apiFetch as jest.Mock).mockResolvedValue({});
   });
 
@@ -291,214 +296,220 @@ describe("CareHomePage", () => {
       });
     });
 
-    test("UT-F-213: 予定「追加」ボタンクリックでModalが開く", async () => {
-      const user = userEvent.setup();
-      render(<CareHomePage />);
+    describe("予定関連", () => {
+      test("UT-F-213: 予定「追加」ボタンクリックでModalが開く", async () => {
+        const user = userEvent.setup();
+        render(<CareHomePage />);
 
-      await user.click(screen.getByRole("button", { name: "予定を追加" }));
+        await user.click(screen.getByRole("button", { name: "予定を追加" }));
 
-      expect(await screen.findByText("予定を追加する")).toBeInTheDocument();
-      expect(screen.getByLabelText(/タイトル/)).toHaveValue("");
-    });
-
-    test("UT-F-214: 予定タイトル未入力で送信するとエラーメッセージが表示される", async () => {
-      const user = userEvent.setup();
-      render(<CareHomePage />);
-
-      await user.click(screen.getByRole("button", { name: "予定を追加" }));
-      await user.type(screen.getByLabelText(/予定日/), "2026-07-01");
-      await user.click(screen.getByRole("button", { name: "追加する" }));
-
-      expect(
-        await screen.findByText("タイトルを入力してください"),
-      ).toBeInTheDocument();
-    });
-
-    test("UT-F-215: 予定タイトルが255文字を超える場合エラーメッセージが表示される", async () => {
-      const user = userEvent.setup();
-      render(<CareHomePage />);
-
-      await user.click(screen.getByRole("button", { name: "予定を追加" }));
-      await user.type(screen.getByLabelText(/タイトル/), "あ".repeat(256));
-      await user.type(screen.getByLabelText(/予定日/), "2026-07-01");
-      await user.click(screen.getByRole("button", { name: "追加する" }));
-
-      expect(
-        await screen.findByText("255文字以内で入力してください"),
-      ).toBeInTheDocument();
-    }, 10000);
-
-    test("UT-F-216: 予定内容が1000文字を超える場合エラーメッセージが表示される", async () => {
-      const user = userEvent.setup();
-      render(<CareHomePage />);
-
-      await user.click(screen.getByRole("button", { name: "予定を追加" }));
-      await user.type(screen.getByLabelText(/タイトル/), "フィラリア薬");
-      await user.type(screen.getByLabelText("予定内容"), "あ".repeat(1001));
-      await user.type(screen.getByLabelText(/予定日/), "2026-07-01");
-      await user.click(screen.getByRole("button", { name: "追加する" }));
-
-      expect(
-        await screen.findByText("1000文字以内で入力してください"),
-      ).toBeInTheDocument();
-    }, 10000);
-
-    test("UT-F-217: 予定日未入力で送信するとエラーメッセージが表示される", async () => {
-      const user = userEvent.setup();
-      render(<CareHomePage />);
-
-      await user.click(screen.getByRole("button", { name: "予定を追加" }));
-      await user.type(screen.getByLabelText(/タイトル/), "フィラリア薬");
-      await user.click(screen.getByRole("button", { name: "追加する" }));
-
-      expect(
-        await screen.findByText("予定日を入力してください"),
-      ).toBeInTheDocument();
-    });
-
-    test("UT-F-218: 予定日が過去の日付の場合エラーメッセージが表示される", async () => {
-      const user = userEvent.setup();
-      render(<CareHomePage />);
-
-      await user.click(screen.getByRole("button", { name: "予定を追加" }));
-      await user.type(screen.getByLabelText(/タイトル/), "フィラリア薬");
-      await user.type(screen.getByLabelText(/予定日/), "2020-01-01");
-      await user.click(screen.getByRole("button", { name: "追加する" }));
-
-      expect(
-        await screen.findByText("予定日に過去の日付は設定できません"),
-      ).toBeInTheDocument();
-    });
-
-    test("UT-F-219: 予定日が本日（境界値）の場合バリデーションを通過する", async () => {
-      const user = userEvent.setup();
-      render(<CareHomePage />);
-
-      await user.click(screen.getByRole("button", { name: "予定を追加" }));
-      await user.type(screen.getByLabelText(/タイトル/), "フィラリア薬");
-      await user.type(screen.getByLabelText(/予定日/), "2026-06-30"); // 今日の日付に更新
-      await user.click(screen.getByRole("button", { name: "追加する" }));
-
-      expect(apiFetch).toHaveBeenCalledWith(
-        "/api/schedules",
-        expect.any(Object),
-      );
-    });
-
-    test("UT-F-220: 正しい値で予定を新規追加するとschedulesに追加される", async () => {
-      const user = userEvent.setup();
-      render(<CareHomePage />);
-
-      await user.click(screen.getByRole("button", { name: "予定を追加" }));
-      await user.type(screen.getByLabelText(/タイトル/), "フィラリア薬");
-      await user.type(screen.getByLabelText("予定内容"), "毎月15日に投与");
-      await user.type(screen.getByLabelText(/予定日/), "2026-07-15");
-      await user.click(screen.getByRole("button", { name: "追加する" }));
-
-      expect(apiFetch).toHaveBeenCalledWith("/api/schedules", {
-        method: "POST",
-        body: JSON.stringify({
-          title: "フィラリア薬",
-          scheduled_content: "毎月15日に投与",
-          scheduled_date: "2026-07-15",
-        }),
+        expect(await screen.findByText("予定を追加する")).toBeInTheDocument();
+        expect(screen.getByLabelText(/タイトル/)).toHaveValue("");
       });
-    });
 
-    test("UT-F-221: 予定編集ボタンクリックでModalが開き既存値が入る", async () => {
-      const user = userEvent.setup();
-      render(<CareHomePage />);
+      test("UT-F-214: 予定タイトル未入力で送信するとエラーメッセージが表示される", async () => {
+        const user = userEvent.setup();
+        render(<CareHomePage />);
 
-      await user.click(
-        screen.getByRole("button", { name: "ワクチン接種のメニューを開く" }),
-      );
-      await user.click(screen.getByRole("menuitem", { name: "編集" }));
+        await user.click(screen.getByRole("button", { name: "予定を追加" }));
+        await user.type(screen.getByLabelText(/予定日/), "2026-07-01");
+        await user.click(screen.getByRole("button", { name: "追加する" }));
 
-      expect(await screen.findByText("予定を編集する")).toBeInTheDocument();
-      expect(screen.getByLabelText(/タイトル/)).toHaveValue("ワクチン接種");
-      expect(screen.getByLabelText("予定内容")).toHaveValue("狂犬病ワクチン");
-      expect(screen.getByLabelText(/予定日/)).toHaveValue("2026-07-15");
-    });
-
-    test("UT-F-222: 編集して送信すると該当のScheduleが更新される", async () => {
-      const user = userEvent.setup();
-      render(<CareHomePage />);
-
-      await user.click(
-        screen.getByRole("button", { name: "ワクチン接種のメニューを開く" }),
-      );
-      await user.click(screen.getByRole("menuitem", { name: "編集" }));
-
-      const titleInput = await screen.findByLabelText(/タイトル/);
-      await user.clear(titleInput);
-      await user.type(titleInput, "混合ワクチン");
-      await user.click(screen.getByRole("button", { name: "更新する" }));
-
-      expect(apiFetch).toHaveBeenCalledWith(
-        "/api/schedules/schedule-1",
-        expect.any(Object),
-      );
-    });
-
-    test("UT-F-223: 予定完了切り替え：未完了→完了", async () => {
-      const user = userEvent.setup();
-      render(<CareHomePage />);
-
-      await user.click(
-        screen.getByRole("checkbox", { name: "ワクチン接種を完了にする" }),
-      );
-
-      expect(apiFetch).toHaveBeenCalledWith("/api/schedules/schedule-1", {
-        method: "PATCH",
-        body: JSON.stringify({ is_completed: true }),
+        expect(
+          await screen.findByText("タイトルを入力してください"),
+        ).toBeInTheDocument();
       });
-    });
 
-    test("UT-F-224: 予定完了切り替え：完了→未完了", async () => {
-      const user = userEvent.setup();
-      const completedSchedule = { ...mockSchedule, is_completed: true };
-      (useCareHomeData as jest.Mock).mockReturnValue(
-        createMockHookReturn({ schedules: [completedSchedule] }),
-      );
+      test("UT-F-215: 予定タイトルが255文字を超える場合エラーメッセージが表示される", async () => {
+        const user = userEvent.setup();
+        render(<CareHomePage />);
 
-      render(<CareHomePage />);
+        await user.click(screen.getByRole("button", { name: "予定を追加" }));
+        await user.type(screen.getByLabelText(/タイトル/), "あ".repeat(256));
+        await user.type(screen.getByLabelText(/予定日/), "2026-07-01");
+        await user.click(screen.getByRole("button", { name: "追加する" }));
 
-      await user.click(screen.getByRole("checkbox", { checked: true }));
+        expect(
+          await screen.findByText("255文字以内で入力してください"),
+        ).toBeInTheDocument();
+      }, 10000);
 
-      expect(apiFetch).toHaveBeenCalledWith("/api/schedules/schedule-1", {
-        method: "PATCH",
-        body: JSON.stringify({ is_completed: false }),
+      test("UT-F-216: 予定内容が1000文字を超える場合エラーメッセージが表示される", async () => {
+        const user = userEvent.setup();
+        render(<CareHomePage />);
+
+        await user.click(screen.getByRole("button", { name: "予定を追加" }));
+        await user.type(screen.getByLabelText(/タイトル/), "フィラリア薬");
+        await user.type(screen.getByLabelText("予定内容"), "あ".repeat(1001));
+        await user.type(screen.getByLabelText(/予定日/), "2026-07-01");
+        await user.click(screen.getByRole("button", { name: "追加する" }));
+
+        expect(
+          await screen.findByText("1000文字以内で入力してください"),
+        ).toBeInTheDocument();
+      }, 10000);
+
+      test("UT-F-217: 予定日未入力で送信するとエラーメッセージが表示される", async () => {
+        const user = userEvent.setup();
+        render(<CareHomePage />);
+
+        await user.click(screen.getByRole("button", { name: "予定を追加" }));
+        await user.type(screen.getByLabelText(/タイトル/), "フィラリア薬");
+        await user.click(screen.getByRole("button", { name: "追加する" }));
+
+        expect(
+          await screen.findByText("予定日を入力してください"),
+        ).toBeInTheDocument();
       });
-    });
 
-    test("UT-F-225: 予定削除リクエストで確認Modalが開く", async () => {
-      const user = userEvent.setup();
-      render(<CareHomePage />);
+      test("UT-F-218: 予定日が過去の日付の場合エラーメッセージが表示される", async () => {
+        const user = userEvent.setup();
+        render(<CareHomePage />);
 
-      await user.click(
-        screen.getByRole("button", { name: "ワクチン接種のメニューを開く" }),
-      );
-      await user.click(screen.getByRole("menuitem", { name: "削除" }));
+        await user.click(screen.getByRole("button", { name: "予定を追加" }));
+        await user.type(screen.getByLabelText(/タイトル/), "フィラリア薬");
+        await user.type(screen.getByLabelText(/予定日/), "2020-01-01");
+        await user.click(screen.getByRole("button", { name: "追加する" }));
 
-      expect(
-        await screen.findByText(
-          "「ワクチン接種」を削除します。この操作は取り消せません。",
-        ),
-      ).toBeInTheDocument();
-    });
+        expect(
+          await screen.findByText("予定日に過去の日付は設定できません"),
+        ).toBeInTheDocument();
+      });
 
-    test("UT-F-226: 予定削除確認すると該当Scheduleがschedulesから除外される", async () => {
-      const user = userEvent.setup();
-      render(<CareHomePage />);
+      test("UT-F-219: 予定日が本日（境界値）の場合バリデーションを通過する", async () => {
+        const user = userEvent.setup();
+        render(<CareHomePage />);
 
-      await user.click(
-        screen.getByRole("button", { name: "ワクチン接種のメニューを開く" }),
-      );
-      await user.click(screen.getByRole("menuitem", { name: "削除" }));
-      await user.click(screen.getByRole("button", { name: /削除/ }));
+        await user.click(screen.getByRole("button", { name: "予定を追加" }));
+        await user.type(screen.getByLabelText(/タイトル/), "フィラリア薬");
+        await user.type(screen.getByLabelText(/予定日/), "2026-06-30"); // 今日の日付に更新
+        await user.click(screen.getByRole("button", { name: "追加する" }));
 
-      expect(apiFetch).toHaveBeenCalledWith("/api/schedules/schedule-1", {
-        method: "DELETE",
+        expect(apiFetch).toHaveBeenCalledWith(
+          "/api/schedules",
+          expect.any(Object),
+        );
+      });
+
+      test("UT-F-220: 正しい値で予定を新規追加するとschedulesに追加される", async () => {
+        const user = userEvent.setup();
+        render(<CareHomePage />);
+
+        await user.click(screen.getByRole("button", { name: "予定を追加" }));
+        await user.type(screen.getByLabelText(/タイトル/), "フィラリア薬");
+        await user.type(screen.getByLabelText("予定内容"), "毎月15日に投与");
+        await user.type(screen.getByLabelText(/予定日/), "2026-07-15");
+        await user.click(screen.getByRole("button", { name: "追加する" }));
+
+        expect(apiFetch).toHaveBeenCalledWith("/api/schedules", {
+          method: "POST",
+          body: JSON.stringify({
+            title: "フィラリア薬",
+            scheduled_content: "毎月15日に投与",
+            scheduled_date: "2026-07-15",
+          }),
+        });
+      });
+
+      test("UT-F-221: 予定編集ボタンクリックでModalが開き既存値が入る", async () => {
+        const user = userEvent.setup();
+        render(<CareHomePage />);
+
+        await user.click(
+          screen.getByRole("button", { name: "ワクチン接種のメニューを開く" }),
+        );
+        await user.click(screen.getByRole("menuitem", { name: "編集" }));
+
+        expect(await screen.findByText("予定を編集する")).toBeInTheDocument();
+        expect(screen.getByLabelText(/タイトル/)).toHaveValue("ワクチン接種");
+        expect(screen.getByLabelText("予定内容")).toHaveValue("狂犬病ワクチン");
+        expect(screen.getByLabelText(/予定日/)).toHaveValue("2026-07-15");
+      });
+
+      test("UT-F-222: 編集して送信すると該当のScheduleが更新される", async () => {
+        const user = userEvent.setup();
+        render(<CareHomePage />);
+
+        await user.click(
+          screen.getByRole("button", { name: "ワクチン接種のメニューを開く" }),
+        );
+        await user.click(screen.getByRole("menuitem", { name: "編集" }));
+
+        const titleInput = await screen.findByLabelText(/タイトル/);
+        await user.clear(titleInput);
+        await user.type(titleInput, "混合ワクチン");
+        await user.click(screen.getByRole("button", { name: "更新する" }));
+
+        expect(apiFetch).toHaveBeenCalledWith("/api/schedules/schedule-1", {
+          method: "PATCH",
+          body: JSON.stringify({
+            title: "混合ワクチン",
+            scheduled_content: "狂犬病ワクチン",
+            scheduled_date: "2026-07-15",
+          }),
+        });
+      });
+
+      test("UT-F-223: 予定完了切り替え：未完了→完了", async () => {
+        const user = userEvent.setup();
+        render(<CareHomePage />);
+
+        await user.click(
+          screen.getByRole("checkbox", { name: "ワクチン接種を完了にする" }),
+        );
+
+        expect(apiFetch).toHaveBeenCalledWith("/api/schedules/schedule-1", {
+          method: "PATCH",
+          body: JSON.stringify({ is_completed: true }),
+        });
+      });
+
+      test("UT-F-224: 予定完了切り替え：完了→未完了", async () => {
+        const user = userEvent.setup();
+        const completedSchedule = { ...mockSchedule, is_completed: true };
+        (useCareHomeData as jest.Mock).mockReturnValue(
+          createMockHookReturn({ schedules: [completedSchedule] }),
+        );
+
+        render(<CareHomePage />);
+
+        await user.click(screen.getByRole("checkbox", { checked: true }));
+
+        expect(apiFetch).toHaveBeenCalledWith("/api/schedules/schedule-1", {
+          method: "PATCH",
+          body: JSON.stringify({ is_completed: false }),
+        });
+      });
+
+      test("UT-F-225: 予定削除リクエストで確認Modalが開く", async () => {
+        const user = userEvent.setup();
+        render(<CareHomePage />);
+
+        await user.click(
+          screen.getByRole("button", { name: "ワクチン接種のメニューを開く" }),
+        );
+        await user.click(screen.getByRole("menuitem", { name: "削除" }));
+
+        expect(
+          await screen.findByText(
+            "「ワクチン接種」を削除します。この操作は取り消せません。",
+          ),
+        ).toBeInTheDocument();
+      });
+
+      test("UT-F-226: 予定削除確認すると該当Scheduleがschedulesから除外される", async () => {
+        const user = userEvent.setup();
+        render(<CareHomePage />);
+
+        await user.click(
+          screen.getByRole("button", { name: "ワクチン接種のメニューを開く" }),
+        );
+        await user.click(screen.getByRole("menuitem", { name: "削除" }));
+        await user.click(screen.getByRole("button", { name: /削除/ }));
+
+        expect(apiFetch).toHaveBeenCalledWith("/api/schedules/schedule-1", {
+          method: "DELETE",
+        });
       });
     });
 
