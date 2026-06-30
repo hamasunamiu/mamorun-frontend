@@ -297,12 +297,6 @@ export default function CareHomePage() {
     setIsScheduleModalOpen(false);
   };
 
-  // ------------------------------------------------------------
-  // 削除（ToDo・予定共通）
-  // ------------------------------------------------------------
-
-  // 本来はDELETE /api/todos/:todoId または DELETE /api/schedules/:scheduleId を呼ぶ必要があるが、
-  // バックエンド未接続のため現時点ではフロント側のstateのみを更新する
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
 
