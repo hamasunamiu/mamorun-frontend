@@ -42,8 +42,6 @@ const hospitalSchema = z.object({
 
 type HospitalFormValues = z.infer<typeof hospitalSchema>;
 
-// ▼ 動作確認用フラグ：バックエンド接続後は false に変更、または関連コードを削除すること
-const USE_MOCK_DATA = false;
 
 export default function HospitalPage() {
   const router = useRouter();
