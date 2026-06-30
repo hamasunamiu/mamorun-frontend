@@ -6,7 +6,6 @@ import { apiFetch, ApiError } from "@/lib/api-client";
 import { supabase } from "@/lib/supabase";
 import type { Profile, Pet, Todo, Schedule } from "./types";
 
-
 export function useCareHomeData() {
   const router = useRouter();
 
@@ -43,35 +42,35 @@ export function useCareHomeData() {
         }
 
         //ペット・ToDo・スケジュール・ペット一覧を並行取得
-      const [petData, todosData, schedulesData, petListData] = await Promise.all([
-        apiFetch<Pet>(`/api/pets/${profileData.pet_id}`),
-        apiFetch<Todo[]>("/api/todos"),
-        apiFetch<Schedule[]>("/api/schedules"),
-        apiFetch<Pet[]>("/api/pets"),
-      ]);
+        const [petData, todosData, schedulesData, petListData] =
+          await Promise.all([
+            apiFetch<Pet>(`/api/pets/${profileData.pet_id}`),
+            apiFetch<Todo[]>("/api/todos"),
+            apiFetch<Schedule[]>("/api/schedules"),
+            apiFetch<Pet[]>("/api/pets"),
+          ]);
 
-      //localStorageに保存されたペットIDがあればそちらを優先
-      const savedPetId = localStorage.getItem('selectedPetId');
-      if (savedPetId && savedPetId !== profileData.pet_id) {
-        try {
-          const savedPetData = await apiFetch<pet>(`/api/pets/${savedPetId}`);
-          setPet(savedPetData);
-        } catch {
+        //localStorageに保存されたペットIDがあればそちらを優先
+        const savedPetId = localStorage.getItem("selectedPetId");
+        if (savedPetId && savedPetId !== profileData.pet_id) {
+          try {
+            const savedPetData = await apiFetch<Pet>(`/api/pets/${savedPetId}`);
+            setPet(savedPetData);
+          } catch {
+            setPet(petData);
+            localStorage.removeItem("selectedPetId");
+          }
+        } else {
           setPet(petData);
-          localStorage.removeItem('selectedPetId');
         }
-      } else {
-        setPet(petData);
-      }
-      setTodos(todosData ?? []);
-      setSchedules(schedulesData  ?? []);
-      setPetList(petListData ?? []);
-
+        setTodos(todosData ?? []);
+        setSchedules(schedulesData ?? []);
+        setPetList(petListData ?? []);
       } catch (err) {
         setLoadError(
           err instanceof ApiError
             ? err.message
-            : "データの取得に失敗しました。時間をおいて再度お試しください。"
+            : "データの取得に失敗しました。時間をおいて再度お試しください。",
         );
       } finally {
         setIsLoading(false);
@@ -87,7 +86,7 @@ export function useCareHomeData() {
 
   useEffect(() => {
     // マウント完了をフラグで示すだけにする（cascading render警告を回避）
-     
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
   }, []);
 
@@ -126,16 +125,16 @@ export function useCareHomeData() {
             const updatedTodo = payload.new as Todo;
             setTodos((prevTodos) =>
               prevTodos.map((todo) =>
-                todo.id === updatedTodo.id ? updatedTodo : todo
-              )
+                todo.id === updatedTodo.id ? updatedTodo : todo,
+              ),
             );
           } else if (payload.eventType === "DELETE") {
             const deletedTodo = payload.old as Todo;
             setTodos((prevTodos) =>
-              prevTodos.filter((todo) => todo.id !== deletedTodo.id)
+              prevTodos.filter((todo) => todo.id !== deletedTodo.id),
             );
           }
-        }
+        },
       )
       .subscribe();
 

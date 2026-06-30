@@ -6,15 +6,14 @@ import { apiFetch, ApiError } from "@/lib/api-client";
 
 // useRouter・useSearchParamsをモック化
 const mockPush = jest.fn();
+const mockRouter = { push: mockPush };
 // useSearchParamsの返り値（getメソッド）をテストごとに切り替えられるようにする
 const mockGet = jest.fn();
+const mockSearchParams = { get: mockGet };
+
 jest.mock("next/navigation", () => ({
-  useRouter: () => ({
-    push: mockPush,
-  }),
-  useSearchParams: () => ({
-    get: mockGet,
-  }),
+  useRouter: () => mockRouter,
+  useSearchParams: () => mockSearchParams,
 }));
 
 // supabaseをモック化
@@ -101,6 +100,10 @@ describe("RegisterPage", () => {
           illness: "",
         }),
       });
+      expect(apiFetch).toHaveBeenCalledWith("/api/profiles/me", {
+        method: "PATCH",
+        body: JSON.stringify({ display_name: "花子" }),
+      });
       expect(mockPush).toHaveBeenCalledWith("/home");
     });
 
@@ -152,7 +155,7 @@ describe("RegisterPage", () => {
         }),
       });
 
-      expect(apiFetch).toHaveBeenCalledTimes(3);
+      expect(apiFetch).toHaveBeenCalledTimes(4);
     });
   });
 
@@ -426,7 +429,8 @@ describe("RegisterPage", () => {
       (supabase.auth.signUp as jest.Mock).mockResolvedValue({ error: null });
       (apiFetch as jest.Mock)
         .mockResolvedValueOnce({ data: {}, message: "success" }) // ① JIT同期は成功
-        .mockRejectedValueOnce(new Error("network error")); // ② ペット登録で失敗
+        .mockResolvedValueOnce({ data: {}, message: "success" }) // ② display_name更新は成功
+        .mockRejectedValueOnce(new Error("network error")); // ③ ペット登録で失敗
 
       render(<RegisterPage />);
       await fillAccountInfo(user);
@@ -449,10 +453,11 @@ describe("RegisterPage", () => {
 
       (supabase.auth.signUp as jest.Mock).mockResolvedValue({ error: null });
       (apiFetch as jest.Mock)
-        .mockResolvedValueOnce({ data: {}, message: "success" }) // JIT同期成功
+        .mockResolvedValueOnce({ data: {}, message: "success" }) // ①JIT同期成功
+        .mockResolvedValueOnce({ data: {}, message: "success" }) // ② display_name更新成功
         .mockRejectedValueOnce(
           new ApiError("INVALID_INVITE_TOKEN", "無効です", 400),
-        );
+        ); // ③ 招待受諾で失敗
 
       render(<RegisterPage />);
       await fillAccountInfo(user);
@@ -470,6 +475,7 @@ describe("RegisterPage", () => {
 
       (supabase.auth.signUp as jest.Mock).mockResolvedValue({ error: null });
       (apiFetch as jest.Mock)
+        .mockResolvedValueOnce({ data: {}, message: "success" })
         .mockResolvedValueOnce({ data: {}, message: "success" })
         .mockRejectedValueOnce(
           new ApiError("INVITE_TOKEN_GONE", "期限切れです", 410),
@@ -491,6 +497,7 @@ describe("RegisterPage", () => {
       (supabase.auth.signUp as jest.Mock).mockResolvedValue({ error: null });
       (apiFetch as jest.Mock)
         .mockResolvedValueOnce({ data: {}, message: "success" })
+        .mockResolvedValueOnce({ data: {}, message: "success" })
         .mockRejectedValueOnce(
           new ApiError("ALREADY_PAIRED", "既に参加済み", 409),
         );
@@ -508,6 +515,7 @@ describe("RegisterPage", () => {
 
       (supabase.auth.signUp as jest.Mock).mockResolvedValue({ error: null });
       (apiFetch as jest.Mock)
+        .mockResolvedValueOnce({ data: {}, message: "success" })
         .mockResolvedValueOnce({ data: {}, message: "success" })
         .mockRejectedValueOnce(
           new ApiError("FAMILY_LIMIT_REACHED", "上限です", 409),
@@ -528,6 +536,7 @@ describe("RegisterPage", () => {
 
       (supabase.auth.signUp as jest.Mock).mockResolvedValue({ error: null });
       (apiFetch as jest.Mock)
+        .mockResolvedValueOnce({ data: {}, message: "success" })
         .mockResolvedValueOnce({ data: {}, message: "success" })
         .mockRejectedValueOnce(
           new ApiError("SOME_UNKNOWN_CODE", "未知のエラー", 500),
@@ -587,6 +596,7 @@ describe("RegisterPage", () => {
       (supabase.auth.signUp as jest.Mock).mockResolvedValue({ error: null });
       (apiFetch as jest.Mock)
         .mockResolvedValueOnce({ data: {}, message: "success" })
+        .mockResolvedValueOnce({ data: {}, message: "success" })
         .mockRejectedValueOnce(
           new ApiError("INVALID_INVITE_TOKEN", "無効です", 400),
         );
@@ -627,7 +637,7 @@ describe("RegisterPage", () => {
         expect(supabase.auth.signUp).toHaveBeenCalledTimes(1);
       });
       // JIT同期1回＋ペット登録1回＝2回（2回連続クリックでも増えない）
-      expect(apiFetch).toHaveBeenCalledTimes(2);
+      expect(apiFetch).toHaveBeenCalledTimes(3);
     });
   });
 });
