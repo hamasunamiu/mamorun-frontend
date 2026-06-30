@@ -47,9 +47,11 @@ describe("LoginPage", () => {
       (supabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({
         error: null,
       });
-      (apiFetch as jest.Mock).mockResolvedValue({
-        data: {},
-        message: "success",
+      (apiFetch as jest.Mock).mockImplementation((url: string) => {
+        if (url === "/api/admin/stats") {
+          return Promise.reject(new ApiError("NOT_FOUND", "Not Found", 404));
+        }
+        return Promise.resolve({ data: {}, message: "success" });
       });
 
       render(<LoginPage />);
@@ -83,9 +85,11 @@ describe("LoginPage", () => {
       (supabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({
         error: null,
       });
-      (apiFetch as jest.Mock).mockResolvedValue({
-        data: {},
-        message: "success",
+      (apiFetch as jest.Mock).mockImplementation((url: string) => {
+        if (url === "/api/admin/stats") {
+          return Promise.reject(new ApiError("NOT_FOUND", "Not Found", 404));
+        }
+        return Promise.resolve({ data: {}, message: "success" });
       });
 
       render(<LoginPage />);
@@ -346,9 +350,11 @@ describe("LoginPage", () => {
       (supabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({
         error: null,
       });
-      (apiFetch as jest.Mock).mockResolvedValue({
-        data: {},
-        message: "success",
+      (apiFetch as jest.Mock).mockImplementation((url: string) => {
+        if (url === "/api/admin/stats") {
+          return Promise.reject(new ApiError("NOT_FOUND", "Not Found", 404));
+        }
+        return Promise.resolve({ data: {}, message: "success" });
       });
 
       render(<LoginPage />);
@@ -363,13 +369,16 @@ describe("LoginPage", () => {
       );
 
       const loginButton = screen.getByRole("button", { name: "ログイン" });
-      // 連続クリックをシミュレート（awaitを挟まず、ほぼ同時に2回呼ぶ）
       await Promise.all([user.click(loginButton), user.click(loginButton)]);
 
       await waitFor(() => {
         expect(supabase.auth.signInWithPassword).toHaveBeenCalledTimes(1);
       });
-      expect(apiFetch).toHaveBeenCalledTimes(1);
+
+      const syncCalls = (apiFetch as jest.Mock).mock.calls.filter(
+        ([url]) => url === "/api/auth/sync",
+      );
+      expect(syncCalls).toHaveLength(1);
     });
   });
 });

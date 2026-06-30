@@ -86,19 +86,6 @@ export default function LoginPage() {
       return;
     }
 
-    //② JIT同期APIを１度だけ呼び出す
-    try {
-      await apiFetch("/api/auth/sync", { method: "POST" });
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setAuthError(err.message);
-      } else {
-        setAuthError("通信エラーが発生しました。時間をおいて再度お試しください。");
-      }
-      setIsSubmitting(false);
-      return;
-    }
-
     //管理者かどうかを判定
     try {
       await apiFetch("/api/admin/stats");
