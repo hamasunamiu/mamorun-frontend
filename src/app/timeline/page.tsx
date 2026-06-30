@@ -34,24 +34,22 @@ export default function TimelinePage() {
 
   useEffect(() => {
     const fetchLogs = async () => {
-      try {
-        const data = await apiFetch<{ data: HealthLog[]; total: number }>(
-          "/api/health-logs",
-        );
-        setLogs(data.data ?? []);
-        const profile = await apiFetch<{ data: { id: string } }>(
-          "/api/profiles/me",
-        );
-        setCurrentUserId(profile.data.id);
-      } catch (err) {
-        if (err instanceof ApiError) {
-          setError(err.message);
-        } else {
-          setError("体調ログの取得に失敗しました。");
-        }
-      } finally {
-        setIsLoading(false);
+      const [logsResult, profileResult] = await Promise.allSettled([
+        apiFetch<{ data: HealthLog[]; total: number }>("/api/health-logs"),
+        apiFetch<{ data: { id: string } }>("/api/profiles/me"),
+      ]);
+
+      if (logsResult.status === "fulfilled") {
+        setLogs(logsResult.value.data ?? []);
+      } else {
+        setError("体調ログの取得に失敗しました。");
       }
+
+      if (profileResult.status === "fulfilled") {
+        setCurrentUserId(profileResult.value.data.id);
+      }
+
+      setIsLoading(false);
     };
     fetchLogs();
   }, []);
