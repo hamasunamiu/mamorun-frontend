@@ -7,10 +7,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-type TodoCardProps = {
+  type TodoCardProps = {
   taskName: string;
   isCompleted: boolean;
   completedById: string | null;
+  completedByName: string | null;
   onToggle: () => void;
   onDelete: () => void;
   onEdit: () => void;
@@ -19,7 +20,8 @@ type TodoCardProps = {
 export function TodoCard({
   taskName,
   isCompleted,
-  completedById, //あとで差し替え
+  completedById,
+  completedByName,
   onToggle,
   onDelete,
   onEdit,
@@ -77,7 +79,7 @@ export function TodoCard({
         {isCompleted && completedById && (
           <div className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground">
             <span aria-hidden="true">👤</span>
-            <span>{completedById.slice(0, 4)}</span>
+            <span>{completedByName ?? completedById.slice(0, 4)}</span>
           </div>
         )}
 

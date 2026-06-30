@@ -45,6 +45,7 @@ export function TodoSection({
               taskName={todo.task_name}
               isCompleted={todo.is_completed}
               completedById={todo.completed_by_id}
+              completedByName={todo.completed_by?.display_name ?? null}
               onToggle={() => onToggle(todo.id)}
               onDelete={() => onDeleteRequest(todo)}
               onEdit={() => onEdit(todo)}

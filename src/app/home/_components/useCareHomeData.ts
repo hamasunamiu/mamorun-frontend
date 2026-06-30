@@ -112,7 +112,8 @@ export function useCareHomeData() {
           table: "todos",
           filter: `pet_id=eq.${pet.id}`,
         },
-        (payload) => {
+        async (payload) => {
+          console.log("[Realtime] Todo更新受信:", payload);
           if (payload.eventType === "INSERT") {
             const newTodo = payload.new as Todo;
             setTodos((prevTodos) => {
@@ -123,12 +124,16 @@ export function useCareHomeData() {
               return [...prevTodos, newTodo];
             });
           } else if (payload.eventType === "UPDATE") {
-            const updatedTodo = payload.new as Todo;
-            setTodos((prevTodos) =>
-              prevTodos.map((todo) =>
-                todo.id === updatedTodo.id ? updatedTodo : todo
-              )
-            );
+
+            try {
+              const latestTodos = await apiFetch<Todo[]>("/api/todos");
+              console.log("[Realtime] 再fetch結果:", latestTodos);
+              if (latestTodos) {
+                setTodos(latestTodos);
+              }
+            } catch (err) {
+              console.error("[Realtime] todos再fetch失敗:", err);
+            }
           } else if (payload.eventType === "DELETE") {
             const deletedTodo = payload.old as Todo;
             setTodos((prevTodos) =>
@@ -137,7 +142,9 @@ export function useCareHomeData() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log("[Realtime] Subscription status:", status);
+      });;
 
     // ★重要：コンポーネントが画面から消える時（クリーンアップ時）に、
     // 必ずチャンネルの登録を解除する。これを忘れると、画面を何度も開閉した際に
