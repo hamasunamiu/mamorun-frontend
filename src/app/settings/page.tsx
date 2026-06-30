@@ -6,6 +6,7 @@ import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { Modal } from "@/components/common/Modal";
 import { supabase } from "@/lib/supabase";
 import { PetEditModal } from "@/components/settings/PetEditModal";
+import { apiFetch, ApiError } from "@/lib/api-client";
 
 export default function SettingsPage() {
   const [notificationTime, setNotificationTime] = useState<"morning" | "night">(
@@ -30,6 +31,9 @@ export default function SettingsPage() {
   const [isPremiumCancelModalOpen, setIsPremiumCancelModalOpen] =
     useState(false);
   const [email, setEmail] = useState<string | null>(null);
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [isInviting, setIsInviting] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -82,6 +86,28 @@ export default function SettingsPage() {
     window.location.href = "/login";
     setIsLogoutModalOpen(false);
   };
+
+  const handleCreateInvite = async () => {
+  if (!currentPet?.id || isInviting) return;
+  setIsInviting(true);
+  setInviteError(null);
+
+  try {
+    const data = await apiFetch<{ invite_url: string; expires_at: string }>(
+      `/api/pets/${currentPet.id}/invite`,
+      { method: "POST" }
+    );
+    setInviteUrl(data.invite_url);
+  } catch (err) {
+    setInviteError(
+      err instanceof ApiError
+        ? err.message
+        : "招待URLの発行に失敗しました。"
+    );
+  } finally {
+    setIsInviting(false);
+  }
+};
 
   const handleUpgrade = async () => {
     if (isUpgrading) return;
@@ -430,56 +456,56 @@ export default function SettingsPage() {
       </div>
 
       <Modal
-        open={isPetModalOpen}
-        onOpenChange={(open) => setIsPetModalOpen(open)}
-        title="ペットを追加する"
-        description="新しいペットの情報を登録します。"
-        footer={
-          <div className="flex gap-2 w-full">
-            <button
-              className="flex-1 py-2 rounded-lg border border-[#e0d6ce] text-sm text-gray-500"
-              onClick={() => setIsPetModalOpen(false)}
-            >
-              キャンセル
-            </button>
-            <PrimaryButton
-              className="flex-1 bg-[#D85A30] hover:bg-[#D85A30] hover:opacity-85"
-              onClick={() => {
-                console.log("ペット追加");
-                setIsPetModalOpen(false);
-              }}
-            >
-              登録する
-            </PrimaryButton>
-          </div>
-        }
-      />
-
-      <Modal
-        open={isInviteModalOpen}
-        onOpenChange={(open) => setIsInviteModalOpen(open)}
-        title="家族を招待する"
-        description="招待URLを発行して家族と共有しましょう。"
-        footer={
-          <div className="flex gap-2 w-full">
-            <button
-              className="flex-1 py-2 rounded-lg border border-[#e0d6ce] text-sm text-gray-500"
-              onClick={() => setIsInviteModalOpen(false)}
-            >
-              閉じる
-            </button>
-            <PrimaryButton
-              className="flex-1 bg-[#D85A30] hover:bg-[#D85A30] hover:opacity-85"
-              onClick={() => {
-                console.log("招待URL発行");
-                setIsInviteModalOpen(false);
-              }}
-            >
-              URLを発行する
-            </PrimaryButton>
-          </div>
-        }
-      />
+  open={isInviteModalOpen}
+  onOpenChange={(open) => {
+    setIsInviteModalOpen(open);
+    if (!open) {
+      setInviteUrl(null);
+      setInviteError(null);
+    }
+  }}
+  title="家族を招待する"
+  description="招待URLを発行して家族と共有しましょう。"
+  footer={
+    inviteUrl ? (
+      <div className="flex flex-col gap-2 w-full">
+        <input
+          readOnly
+          value={inviteUrl}
+          className="text-xs border border-[#e0d6ce] rounded-lg px-3 py-2 bg-[#FFF9F5]"
+          onClick={(e) => e.currentTarget.select()}
+        />
+        <button
+          className="flex-1 py-2 rounded-lg border border-[#e0d6ce] text-sm text-gray-500"
+          onClick={() => setIsInviteModalOpen(false)}
+        >
+          閉じる
+        </button>
+      </div>
+    ) : (
+      <div className="flex flex-col gap-2 w-full">
+        {inviteError && (
+          <p className="text-xs text-red-500 text-center">{inviteError}</p>
+        )}
+        <div className="flex gap-2 w-full">
+          <button
+            className="flex-1 py-2 rounded-lg border border-[#e0d6ce] text-sm text-gray-500"
+            onClick={() => setIsInviteModalOpen(false)}
+          >
+            閉じる
+          </button>
+          <PrimaryButton
+            className="flex-1 bg-[#D85A30] hover:bg-[#D85A30] hover:opacity-85"
+            onClick={handleCreateInvite}
+            disabled={isInviting}
+          >
+            {isInviting ? "発行中..." : "URLを発行する"}
+          </PrimaryButton>
+        </div>
+      </div>
+    )
+  }
+/>
 
       <Modal
         open={isLineUnlinkModalOpen}
