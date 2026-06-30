@@ -18,6 +18,7 @@ import { TodoFormModal } from "./_components/TodoFormModal";
 import { ScheduleFormModal } from "./_components/ScheduleFormModal";
 import { TodoSection } from "./_components/TodoSection";
 import { ScheduleSection } from "./_components/ScheduleSection";
+import { apiFetch } from "@/lib/api-client";
 
 // ============================================================
 // フォーム用Zodスキーマ（画面設計書のバリデーション表に準拠）
@@ -148,58 +149,47 @@ export default function CareHomePage() {
     setIsTodoModalOpen(true);
   };
 
-  const handleToggleTodo = (todoId: string) => {
-    // 本来はPATCH /api/todos/:todoIdを呼ぶ必要があるが、バックエンド未接続のため
-    // 現時点ではフロント側のstateのみを更新する（バックエンド接続後にAPI呼び出しを追加する）
-    setTodos((prevTodos) =>
-      prevTodos.map((todo) =>
-        todo.id === todoId
-          ? {
-              ...todo,
-              is_completed: !todo.is_completed,
-              // ※本来はバックエンドがauth.uid()から自動付与するため、
-              // フロントから明示的に送信する必要はない（API設計書準拠）。
-              // ここではモック表示用に自分のprofile.idを仮で入れている
-              completed_by_id: !todo.is_completed
-                ? (profile?.id ?? null)
-                : null,
-            }
-          : todo,
-      ),
-    );
+  const handleToggleTodo = async (todoId: string) => {
+    const todo = todos.find((t) => t.id === todoId);
+    if (!todo) return;
+
+    try {
+      await apiFetch(`/api/todos/${todoId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_completed: !todo.is_completed }),
+      });
+    } catch (err) {
+      console.error("ToDo完了切り替え失敗;", err);
+    }
   };
 
   // editingTodoIdの有無で「新規追加」か「既存の更新」かを分岐する
-  const onSubmitTodo = (values: TodoFormValues) => {
+  const onSubmitTodo = async (values: TodoFormValues) => {
     if (editingTodoId) {
-      // 編集モード：本来はPATCH /api/todos/:todoIdを呼ぶ必要があるが、
-      // バックエンド未接続のため現時点ではフロント側のstateのみを更新する
-      setTodos((prevTodos) =>
-        prevTodos.map((todo) =>
-          todo.id === editingTodoId
-            ? { ...todo, task_name: values.taskName }
-            : todo,
-        ),
-      );
+      try{
+        await apiFetch(`/api/todos/${editingTodoId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ task_name: values.taskName }),
+        });
+        setTodos((prevTodos) =>
+          prevTodos.map((todo) =>
+            todo.id === editingTodoId
+              ? { ...todo, task_name: values.taskName }
+              : todo
+         )
+        );
+      } catch (err) {
+        console.error("ToDo更新失敗:", err);
+      }
     } else {
-      // 新規追加モード
-      // ★注記：react-hooks/purity が、イベントハンドラ内のDate.now()呼び出しを
-      // レンダリング中の呼び出しと誤検知する既知の問題のため、id行のみ無効化する。
-      // 参考：https://github.com/facebook/react/issues/34834
-      const newTodo: Todo = {
-        // eslint-disable-next-line react-hooks/purity
-        id: `todo-${Date.now()}`, // ※仮のID。本来はバックエンドが発行するUUIDを使う
-        pet_id: pet?.id ?? "",
-        task_name: values.taskName,
-        is_completed: false,
-        completed_by_id: null,
-        completed_at: null,
-        // ★注記：todo_dateも本来はバックエンドがJST基準で算出するため送信不要（API設計書準拠）。
-        // ここではモック表示用の仮の値として、isMounted後のnew Date()を使う
-        todo_date: isMounted ? new Date().toISOString().slice(0, 10) : "",
-        created_at: new Date().toISOString(),
-      };
-      setTodos((prevTodos) => [...prevTodos, newTodo]);
+      try {
+        await apiFetch("/api/todos", {
+          method: "POST",
+          body: JSON.stringify({ task_name: values.taskName }),
+        });
+      } catch (err) {
+        console.error("ToDo作成失敗:", err);
+      }
     }
 
     resetTodoForm();
@@ -239,51 +229,67 @@ export default function CareHomePage() {
     setIsScheduleModalOpen(true);
   };
 
-  const handleToggleSchedule = (scheduleId: string) => {
-    // 本来はPATCH /api/schedules/:scheduleIdを呼ぶ必要があるが、バックエンド未接続のため
-    // 現時点ではフロント側のstateのみを更新する（バックエンド接続後にAPI呼び出しを追加する）
-    setSchedules((prevSchedules) =>
-      prevSchedules.map((schedule) =>
-        schedule.id === scheduleId
-          ? { ...schedule, is_completed: !schedule.is_completed }
-          : schedule,
-      ),
-    );
-  };
+  const handleToggleSchedule = async (scheduleId: string) => {
+    const schedule = schedules.find((s) => s.id === scheduleId);
+    if (!schedule) return;
+
+    try {
+      await apiFetch(`/api/schedules/${scheduleId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_completed: !schedule.is_completed }),
+      });
+      setSchedules((prevSchedules) =>
+        prevSchedules.map((s) =>
+          s.id === scheduleId ? { ...s, is_completed: !s.is_completed } : s
+    )
+   );
+  } catch (err) {
+   console.error("スケジュール完了切り替え失敗:", err);
+  }
+};
 
   // editingScheduleIdの有無で「新規追加」か「既存の更新」かを分岐する
-  const onSubmitSchedule = (values: ScheduleFormValues) => {
+  const onSubmitSchedule = async (values: ScheduleFormValues) => {
     if (editingScheduleId) {
-      // 編集モード：本来はPATCH /api/schedules/:scheduleIdを呼ぶ必要があるが、
-      // バックエンド未接続のため現時点ではフロント側のstateのみを更新する
-      setSchedules((prevSchedules) =>
-        prevSchedules.map((schedule) =>
-          schedule.id === editingScheduleId
-            ? {
-                ...schedule,
-                title: values.title,
-                scheduled_content: values.scheduledContent || null,
-                scheduled_date: values.scheduledDate,
-              }
-            : schedule,
-        ),
-      );
+      try {
+        await apiFetch(`/api/schedules/${editingScheduleId}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            title: values.title,
+            scheduled_content: values.scheduledContent || undefined,
+            scheduled_date: values.scheduledDate,
+          }),
+        });
+        setSchedules((prevSchedules) =>
+          prevSchedules.map((schedule) =>
+            schedule.id === editingScheduleId
+              ? {
+                  ...schedule,
+                  title: values.title,
+                  scheduled_content: values.scheduledContent || null,
+                  scheduled_date: values.scheduledDate,
+                }
+              : schedule
+            )
+          );
+        } catch (err) {
+          console.error("スケジュール更新失敗:", err);
+        }
     } else {
-      // 新規追加モード
-      // ★注記：react-hooks/purity が、イベントハンドラ内のDate.now()呼び出しを
-      // レンダリング中の呼び出しと誤検知する既知の問題のため、id行のみ無効化する。
-      // 参考：https://github.com/facebook/react/issues/34834
-      const newSchedule: Schedule = {
-        // eslint-disable-next-line react-hooks/purity
-        id: `schedule-${Date.now()}`, // ※仮のID。本来はバックエンドが発行するUUIDを使う
-        pet_id: pet?.id ?? "",
-        title: values.title,
-        scheduled_content: values.scheduledContent || null,
-        scheduled_date: values.scheduledDate,
-        is_completed: false,
-        created_at: new Date().toISOString(),
-      };
-      setSchedules((prevSchedules) => [...prevSchedules, newSchedule]);
+      //新規追加モード
+      try {
+        const newSchedule = await apiFetch<Schedule>("/api/schedules", {
+          method: "POST",
+          body: JSON.stringify({
+              title: values.title,
+              scheduled_content: values.scheduledContent || undefined,
+              scheduled_date: values.scheduledDate,
+          }),
+        });
+        setSchedules((prevSchedules) => [...prevSchedules, newSchedule]);
+       } catch (err) {
+        console.error("スケジュール追加失敗:", err);
+       }
     }
 
     resetScheduleForm();
@@ -291,30 +297,29 @@ export default function CareHomePage() {
     setIsScheduleModalOpen(false);
   };
 
-  // ------------------------------------------------------------
-  // 削除（ToDo・予定共通）
-  // ------------------------------------------------------------
-
-  // 本来はDELETE /api/todos/:todoId または DELETE /api/schedules/:scheduleId を呼ぶ必要があるが、
-  // バックエンド未接続のため現時点ではフロント側のstateのみを更新する
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
 
+    try {
     if (deleteTarget.type === "todo") {
-      setTodos((prevTodos) =>
-        prevTodos.filter((todo) => todo.id !== deleteTarget.id),
-      );
+      await apiFetch(`/api/todos/${deleteTarget.id}`, { method: "DELETE" });
+      // Realtimeがstateを更新するので setTodos は不要
     } else {
+      await apiFetch(`/api/schedules/${deleteTarget.id}`, { method: "DELETE" });
       setSchedules((prevSchedules) =>
-        prevSchedules.filter((schedule) => schedule.id !== deleteTarget.id),
+        prevSchedules.filter((schedule) => schedule.id !== deleteTarget.id)
       );
     }
+  } catch (err) {
+    console.error("削除失敗:", err);
+  }
 
-    setDeleteTarget(null);
-  };
+  setDeleteTarget(null);
+};
 
   const handleSwitchPet = (selectedPet: Pet) => {
     setPet(selectedPet);
+    localStorage.setItem('selectedPetId', selectedPet.id);
     setIsPetSwitchModalOpen(false);
   };
 
