@@ -42,8 +42,6 @@ const hospitalSchema = z.object({
 
 type HospitalFormValues = z.infer<typeof hospitalSchema>;
 
-// ▼ 動作確認用フラグ：バックエンド接続後は false に変更、または関連コードを削除すること
-const USE_MOCK_DATA = true;
 
 export default function HospitalPage() {
   const router = useRouter();
@@ -88,22 +86,6 @@ export default function HospitalPage() {
       setIsLoading(true);
       setLoadError(null);
 
-      // ▼▼▼ 動作確認用：バックエンド未接続のため一時的にモックデータを使用 ▼▼▼
-      // バックエンド接続後、この if ブロックを削除し、下のtry/catchのみに戻すこと
-      if (USE_MOCK_DATA) {
-        await new Promise((resolve) => setTimeout(resolve, 300));
-        setPet(MOCK_PET);
-        setPetList(MOCK_PET_LIST);
-        reset({
-          hospital_name: MOCK_PET.hospital_name ?? "",
-          hospital_phone: MOCK_PET.hospital_phone ?? "",
-          hospital_address: MOCK_PET.hospital_address ?? "",
-        });
-        setIsLoading(false);
-        return;
-      }
-      // ▲▲▲ 動作確認用ここまで ▲▲▲
-
       try {
         const profileData = await apiFetch<Profile>("/api/profiles/me");
 
@@ -112,8 +94,16 @@ export default function HospitalPage() {
           return;
         }
 
-        const petData = await apiFetch<Pet>(`/api/pets/${profileData.pet_id}`);
+        const savedPetId = localStorage.getItem('selectedPetId');
+        const targetPetId = savedPetId ?? profileData.pet_id;
+
+        const [petData, petListData] = await Promise.all([
+          apiFetch<Pet>(`/api/pets/${targetPetId}`),
+          apiFetch<Pet[]>("/api/pets"),
+        ]);
+
         setPet(petData);
+        setPetList(petListData ?? []);
         reset({
           hospital_name: petData.hospital_name ?? "",
           hospital_phone: petData.hospital_phone ?? "",
@@ -138,6 +128,7 @@ export default function HospitalPage() {
   // 切り替え先のペットのものに更新する必要がある点に注意。
   const handleSwitchPet = (selectedPet: Pet) => {
     setPet(selectedPet);
+    localStorage.setItem('selectedPetId', selectedPet.id);
     reset({
       hospital_name: selectedPet.hospital_name ?? "",
       hospital_phone: selectedPet.hospital_phone ?? "",
@@ -171,31 +162,6 @@ export default function HospitalPage() {
     setIsSubmitting(true);
     setSaveError(null);
 
-    // ▼▼▼ 動作確認用：バックエンド未接続のため一時的にモック保存とする ▼▼▼
-    // バックエンド接続後、この if ブロックを削除し、下のtry/catchのみに戻すこと
-    if (USE_MOCK_DATA) {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      setPet({
-        ...pet,
-        hospital_name: values.hospital_name,
-        hospital_phone: values.hospital_phone,
-        hospital_address: values.hospital_address,
-        // モードでは実アップロードは行わず、選択していれば仮のローカルURLのみ反映する
-        hospital_card_image_url: hospitalCardFile
-          ? URL.createObjectURL(hospitalCardFile)
-          : pet.hospital_card_image_url,
-        insurance_card_image_url: insuranceCardFile
-          ? URL.createObjectURL(insuranceCardFile)
-          : pet.insurance_card_image_url,
-      });
-      setHospitalCardFile(null);
-      setInsuranceCardFile(null);
-      setIsEditing(false);
-      setIsSubmitting(false);
-      return;
-    }
-    // ▲▲▲ 動作確認用ここまで ▲▲▲
-
     try {
       // ① 画像が新たに選択されていればアップロードし、URLを取得する。
       //    選択されていなければ既存のURL（変更なし）をそのまま使う。
@@ -224,8 +190,8 @@ export default function HospitalPage() {
           hospital_name: values.hospital_name,
           hospital_phone: values.hospital_phone,
           hospital_address: values.hospital_address,
-          hospital_card_image_url: hospitalCardUrl,
-          insurance_card_image_url: insuranceCardUrl,
+          hospital_card_image_url: hospitalCardUrl ?? undefined,
+          insurance_card_image_url: insuranceCardUrl ?? undefined,
         }),
       });
 
