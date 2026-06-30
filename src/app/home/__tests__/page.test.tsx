@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CareHomePage from "../page";
 import { useCareHomeData } from "../_components/useCareHomeData";
@@ -103,12 +103,19 @@ function createMockHookReturn(
 
 describe("CareHomePage", () => {
   beforeEach(() => {
+    jest.useFakeTimers({ advanceTimers: true });
+    jest.setSystemTime(new Date("2026-06-30T09:00:00+09:00"));
+
     jest.clearAllMocks();
     window.localStorage.clear();
 
     (useCareHomeData as jest.Mock).mockReturnValue(createMockHookReturn());
 
     (apiFetch as jest.Mock).mockResolvedValue({});
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   describe("状態表示", () => {
@@ -340,14 +347,19 @@ describe("CareHomePage", () => {
 
         await user.click(screen.getByRole("button", { name: "予定を追加" }));
         await user.type(screen.getByLabelText(/タイトル/), "フィラリア薬");
-        await user.type(screen.getByLabelText("予定内容"), "あ".repeat(1001));
+
+        // 1001文字の一括入力はuser.typeだと遅すぎるため、fireEvent.changeで直接設定する
+        fireEvent.change(screen.getByLabelText("予定内容"), {
+          target: { value: "あ".repeat(1001) },
+        });
+
         await user.type(screen.getByLabelText(/予定日/), "2026-07-01");
         await user.click(screen.getByRole("button", { name: "追加する" }));
 
         expect(
           await screen.findByText("1000文字以内で入力してください"),
         ).toBeInTheDocument();
-      }, 10000);
+      });
 
       test("UT-F-217: 予定日未入力で送信するとエラーメッセージが表示される", async () => {
         const user = userEvent.setup();
