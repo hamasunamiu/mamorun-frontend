@@ -1,7 +1,8 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import HospitalPage from "../page";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { apiFetch } from "@/lib/api-client";
+import { uploadPetImage } from "@/lib/petImageUpload";
 
 const mockPush = jest.fn();
 const mockRouter = { push: mockPush };
@@ -28,9 +29,61 @@ jest.mock("@/lib/petImageUpload", () => ({
   uploadPetImage: jest.fn(),
 }));
 
+// localStorageをモック化
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => store[key] ?? null,
+    setItem: (key: string, value: string) => {
+      store[key] = value;
+    },
+    removeItem: (key: string) => {
+      delete store[key];
+    },
+    clear: () => {
+      store = {};
+    },
+  };
+})();
+Object.defineProperty(window, "localStorage", { value: localStorageMock });
+
+// テスト用のモックペットデータ（MOCK_PETの実際の値に合わせる）
+const mockPet = {
+  id: "pet-1",
+  name: "むぎ",
+  species: "dog",
+  gender: "male",
+  birthday: "2023-01-01",
+  illness: "アレルギー性皮膚炎",
+  hospital_name: "ミズ動物病院",
+  hospital_phone: "0312345678",
+  hospital_address: "東京都渋谷区〇〇1-2-3",
+  hospital_card_image_url: null,
+  insurance_card_image_url: null,
+  created_at: "2026-01-01T00:00:00.000Z",
+};
+
+const mockProfile = {
+  id: "profile-1",
+  pet_id: "pet-1",
+  line_user_id: null,
+  is_premium: false,
+  stripe_customer_id: null,
+  notification_time: "morning",
+  created_at: "2026-01-01T00:00:00.000Z",
+};
+
 describe("HospitalPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    localStorageMock.clear();
+
+    (apiFetch as jest.Mock).mockImplementation((url: string) => {
+      if (url === "/api/profiles/me") return Promise.resolve(mockProfile);
+      if (url.startsWith("/api/pets/")) return Promise.resolve(mockPet);
+      if (url === "/api/pets") return Promise.resolve([mockPet]);
+      return Promise.resolve({});
+    });
   });
 
   describe("初期表示（モック）", () => {
@@ -61,11 +114,19 @@ describe("HospitalPage", () => {
     });
 
     test("UT-F-302: loadErrorが存在する状態でErrorMessageが表示される", async () => {
-      // USE_MOCK_DATAがtrueの間はloadErrorに到達しないため、
-      // このケースは現状のモック実装下では再現できない。
-      // 本来はUSE_MOCK_DATA=false時のapiFetch失敗ケースを想定しているため、
-      // 後続のAPI接続後に書き直す前提のプレースホルダーとして記録する。
-      expect(true).toBe(true);
+      (apiFetch as jest.Mock).mockRejectedValue(
+        new Error(
+          "データの取得に失敗しました。時間をおいて再度お試しください。",
+        ),
+      );
+
+      render(<HospitalPage />);
+
+      expect(
+        await screen.findByText(
+          "データの取得に失敗しました。時間をおいて再度お試しください。",
+        ),
+      ).toBeInTheDocument();
     });
   });
 
@@ -137,6 +198,25 @@ describe("HospitalPage", () => {
   describe("保存（モック）", () => {
     test("UT-F-310: 正しい値で送信すると病院情報が更新され閲覧モードに戻る", async () => {
       const user = userEvent.setup();
+
+      (apiFetch as jest.Mock).mockImplementation(
+        (url: string, options?: RequestInit) => {
+          if (url === "/api/profiles/me") return Promise.resolve(mockProfile);
+          if (url === "/api/pets") return Promise.resolve([mockPet]);
+          if (
+            url.startsWith("/api/pets/") &&
+            (options as RequestInit)?.method === "PATCH"
+          ) {
+            return Promise.resolve({
+              ...mockPet,
+              hospital_name: "新しい動物病院",
+            });
+          }
+          if (url.startsWith("/api/pets/")) return Promise.resolve(mockPet);
+          return Promise.resolve({});
+        },
+      );
+
       render(<HospitalPage />);
 
       await waitFor(
@@ -168,6 +248,26 @@ describe("HospitalPage", () => {
 
     test("UT-F-311: 画像を選択した状態で保存するとhospital_card_image_urlがObjectURLに置き換わる", async () => {
       const user = userEvent.setup();
+      (uploadPetImage as jest.Mock).mockResolvedValue("blob:mock-url");
+
+      (apiFetch as jest.Mock).mockImplementation(
+        (url: string, options?: RequestInit) => {
+          if (url === "/api/profiles/me") return Promise.resolve(mockProfile);
+          if (url === "/api/pets") return Promise.resolve([mockPet]);
+          if (
+            url.startsWith("/api/pets/") &&
+            (options as RequestInit)?.method === "PATCH"
+          ) {
+            return Promise.resolve({
+              ...mockPet,
+              hospital_card_image_url: "blob:mock-url",
+            });
+          }
+          if (url.startsWith("/api/pets/")) return Promise.resolve(mockPet);
+          return Promise.resolve({});
+        },
+      );
+
       const { container } = render(<HospitalPage />);
 
       await waitFor(
@@ -187,7 +287,6 @@ describe("HospitalPage", () => {
 
       await waitFor(
         () => {
-          // 保存後、閲覧モードに戻った診察券画像がblob:mock-url（jest.setup.tsのモック）になっている
           expect(screen.getByAltText("診察券のプレビュー")).toHaveAttribute(
             "src",
             "blob:mock-url",

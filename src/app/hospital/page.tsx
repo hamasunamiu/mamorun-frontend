@@ -14,7 +14,6 @@ import { PetSwitchModal } from "@/components/common/PetSwitchModal";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { uploadPetImage } from "@/lib/petImageUpload";
 import type { Profile, Pet } from "./_components/types";
-import { MOCK_PET, MOCK_PET_LIST } from "./_components/mockData";
 import { HospitalDisplayView } from "./_components/HospitalDisplayView";
 import { HospitalEditView } from "./_components/HospitalEditView";
 
@@ -41,7 +40,6 @@ export const hospitalSchema = z.object({
 });
 
 type HospitalFormValues = z.infer<typeof hospitalSchema>;
-
 
 export default function HospitalPage() {
   const router = useRouter();
@@ -94,7 +92,7 @@ export default function HospitalPage() {
           return;
         }
 
-        const savedPetId = localStorage.getItem('selectedPetId');
+        const savedPetId = localStorage.getItem("selectedPetId");
         const targetPetId = savedPetId ?? profileData.pet_id;
 
         const [petData, petListData] = await Promise.all([
@@ -129,7 +127,7 @@ export default function HospitalPage() {
   // 切り替え先のペットのものに更新する必要がある点に注意。
   const handleSwitchPet = (selectedPet: Pet) => {
     setPet(selectedPet);
-    localStorage.setItem('selectedPetId', selectedPet.id);
+    localStorage.setItem("selectedPetId", selectedPet.id);
     reset({
       hospital_name: selectedPet.hospital_name ?? "",
       hospital_phone: selectedPet.hospital_phone ?? "",
