@@ -8,7 +8,10 @@ import { ImageUploader } from "@/components/common/ImageUploader";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { Modal } from "@/components/common/Modal";
 import { apiFetch, ApiError } from "@/lib/api-client";
-
+import type { Pet } from "@/types";
+import { uploadPetImage } from "@/lib/petImageUpload";
+import { PetSwitchModal } from "@/components/common/PetSwitchModal";
+ 
 type HealthLog = {
   id: string;
   pet_id: string;
@@ -18,7 +21,7 @@ type HealthLog = {
   attached_image_url: string | null;
   created_at: string;
 };
-
+ 
 export default function TimelinePage() {
   const [logs, setLogs] = useState<HealthLog[]>([]);
   const [title, setTitle] = useState("");
@@ -31,40 +34,66 @@ export default function TimelinePage() {
   const [error, setError] = useState<string | null>(null);
   const [imageUploaderKey, setImageUploaderKey] = useState(0);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
+  const [pet, setPet] = useState<Pet | null>(null);
+  const [petList, setPetList] = useState<Pet[]>([]);
+  const [isPetSwitchModalOpen, setIsPetSwitchModalOpen] = useState(false);
+ 
   useEffect(() => {
     const fetchLogs = async () => {
+      const savedPetId = localStorage.getItem("selectedPetId");
+ 
       const [logsResult, profileResult] = await Promise.allSettled([
-        apiFetch<{ data: HealthLog[]; total: number }>("/api/health-logs"),
-        apiFetch<{ data: { id: string } }>("/api/profiles/me"),
+        apiFetch<HealthLog[]>("/api/health-logs"),
+        apiFetch<{ id: string; pet_id: string | null }>("/api/profiles/me"),
       ]);
-
+ 
       if (logsResult.status === "fulfilled") {
-        setLogs(logsResult.value.data ?? []);
+        setLogs(logsResult.value ?? []);
       } else {
         setError("体調ログの取得に失敗しました。");
       }
-
+ 
       if (profileResult.status === "fulfilled") {
-        setCurrentUserId(profileResult.value.data.id);
+        setCurrentUserId(profileResult.value.id);
+ 
+        const targetPetId = savedPetId ?? profileResult.value.pet_id;
+        if (targetPetId) {
+          try {
+            const [petData, petListData] = await Promise.all([
+              apiFetch<Pet>(`/api/pets/${targetPetId}`),
+              apiFetch<Pet[]>("/api/pets"),
+            ]);
+            setPet(petData);
+            setPetList(petListData ?? []);
+          } catch (err) {
+            console.error("ペット情報取得失敗:", err);
+          }
+        }
       }
-
+ 
       setIsLoading(false);
     };
     fetchLogs();
   }, []);
-
+ 
   const isSubmitDisabled = title.trim() === "" || isSubmitting;
-
+ 
   const handleSubmit = async () => {
     if (isSubmitDisabled) return;
     setIsSubmitting(true);
     try {
+      let attachedImageUrl: string | undefined;
+ 
+      if (imageFile && pet) {
+        attachedImageUrl = await uploadPetImage(pet.id, imageFile, "health-log");
+      }
+ 
       const newLog = await apiFetch<HealthLog>("/api/health-logs", {
         method: "POST",
         body: JSON.stringify({
           title,
           detail_memo: memo,
+          attached_image_url: attachedImageUrl,
         }),
       });
       setLogs((prev) => [newLog, ...prev]);
@@ -82,12 +111,12 @@ export default function TimelinePage() {
       setIsSubmitting(false);
     }
   };
-
+ 
   const handleDeleteClick = (id: string) => {
     setDeleteTargetId(id);
     setIsDeleteModalOpen(true);
   };
-
+ 
   const handleDeleteConfirm = async () => {
     if (!deleteTargetId) return;
     try {
@@ -106,11 +135,29 @@ export default function TimelinePage() {
       setDeleteTargetId(null);
     }
   };
-
+ 
+  const handleSwitchPet = (selectedPet: Pet) => {
+    setPet(selectedPet);
+    localStorage.setItem("selectedPetId", selectedPet.id);
+    setIsPetSwitchModalOpen(false);
+  };
+ 
   return (
     <div className="min-h-screen bg-[#FFF9F5] pb-20">
-      <Header petName="むぎ" dateLabel="6月23日（月）" />
-
+      <Header
+        petName={pet?.name}
+        dateLabel={new Date().toLocaleDateString("ja-JP", {
+          month: "long",
+          day: "numeric",
+          weekday: "short",
+        })}
+        onPetSwitch={() => {
+          if (petList.length > 1) {
+            setIsPetSwitchModalOpen(true);
+          }
+        }}
+      />
+ 
       <div className="p-4 flex flex-col gap-3">
         <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
           <p className="text-sm font-medium text-[#993C1D] mb-3">
@@ -147,7 +194,7 @@ export default function TimelinePage() {
             {isSubmitting ? "投稿中..." : "投稿する"}
           </PrimaryButton>
         </div>
-
+ 
         {isLoading ? (
           <div className="text-center text-sm text-gray-400 py-8">
             読み込み中...
@@ -206,7 +253,15 @@ export default function TimelinePage() {
           ))
         )}
       </div>
-
+ 
+      <PetSwitchModal
+        open={isPetSwitchModalOpen}
+        onOpenChange={setIsPetSwitchModalOpen}
+        petList={petList}
+        currentPetId={pet?.id}
+        onSwitch={handleSwitchPet}
+      />
+ 
       <Modal
         open={isDeleteModalOpen}
         onOpenChange={(open) => setIsDeleteModalOpen(open)}
@@ -229,10 +284,11 @@ export default function TimelinePage() {
           </div>
         }
       />
-
+ 
       <div className="fixed bottom-0 left-0 right-0">
         <BottomNavigation />
       </div>
     </div>
   );
 }
+ 
