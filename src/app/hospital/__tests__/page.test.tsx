@@ -173,6 +173,106 @@ describe("HospitalPage", () => {
     }, 10000);
   });
 
+  describe("ペット切り替え", () => {
+    test("UT-F-306: ペット切り替え：petListが1匹のみの場合、切り替えボタンクリックしてもModalは開かない", async () => {
+      const user = userEvent.setup();
+      render(<HospitalPage />);
+
+      await waitFor(
+        () => {
+          expect(screen.queryByRole("status")).not.toBeInTheDocument();
+        },
+        { timeout: 3000 },
+      );
+
+      await user.click(
+        screen.getByRole("button", { name: "ペットを切り替える" }),
+      );
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    test("UT-F-307: ペット切り替え：petListが2匹以上の場合、切り替えボタンクリックでPetSwitchModalが開く", async () => {
+      const mockPet2 = {
+        ...mockPet,
+        id: "pet-2",
+        name: "もも",
+        species: "cat",
+      };
+
+      (apiFetch as jest.Mock).mockImplementation((url: string) => {
+        if (url === "/api/profiles/me") return Promise.resolve(mockProfile);
+        if (url.startsWith("/api/pets/")) return Promise.resolve(mockPet);
+        if (url === "/api/pets") return Promise.resolve([mockPet, mockPet2]);
+        return Promise.resolve({});
+      });
+
+      const user = userEvent.setup();
+      render(<HospitalPage />);
+
+      await waitFor(
+        () => {
+          expect(screen.queryByRole("status")).not.toBeInTheDocument();
+        },
+        { timeout: 3000 },
+      );
+
+      await user.click(
+        screen.getByRole("button", { name: "ペットを切り替える" }),
+      );
+
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+
+    test("UT-F-308: ペットを選択（正常系）：フォームが選択したペットの病院情報にresetされ、編集モードが強制終了する", async () => {
+      const mockPet2 = {
+        ...mockPet,
+        id: "pet-2",
+        name: "もも",
+        species: "cat",
+        hospital_name: "もも動物病院",
+        hospital_phone: "0398765432",
+        hospital_address: "東京都新宿区〇〇4-5-6",
+      };
+
+      (apiFetch as jest.Mock).mockImplementation((url: string) => {
+        if (url === "/api/profiles/me") return Promise.resolve(mockProfile);
+        if (url.startsWith("/api/pets/")) return Promise.resolve(mockPet);
+        if (url === "/api/pets") return Promise.resolve([mockPet, mockPet2]);
+        return Promise.resolve({});
+      });
+
+      const user = userEvent.setup();
+      render(<HospitalPage />);
+
+      await waitFor(
+        () => {
+          expect(screen.queryByRole("status")).not.toBeInTheDocument();
+        },
+        { timeout: 3000 },
+      );
+
+      await user.click(screen.getByRole("button", { name: "編集する" }));
+      expect(
+        screen.getByRole("button", { name: "保存する" }),
+      ).toBeInTheDocument();
+
+      await user.click(
+        screen.getByRole("button", { name: "ペットを切り替える" }),
+      );
+      await user.click(screen.getByRole("button", { name: /もも/ }));
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+      expect(
+        screen.getByRole("button", { name: "編集する" }),
+      ).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "編集する" }));
+      expect(screen.getByLabelText(/病院名/)).toHaveValue("もも動物病院");
+    });
+  });
+
   describe("キャンセル", () => {
     test("UT-F-309: 編集中に値を変更してキャンセルすると元の値にresetされ閲覧モードに戻る", async () => {
       const user = userEvent.setup();
@@ -344,5 +444,33 @@ describe("HospitalPage", () => {
         screen.getByRole("link", { name: "緊急発信" }),
       ).toBeInTheDocument();
     }, 10000);
+  });
+
+  test("UT-F-314: pet.hospital_phoneが存在しない場合EmergencyCallButtonが表示されない", async () => {
+    const mockPetWithoutPhone = {
+      ...mockPet,
+      hospital_phone: null,
+    };
+
+    (apiFetch as jest.Mock).mockImplementation((url: string) => {
+      if (url === "/api/profiles/me") return Promise.resolve(mockProfile);
+      if (url.startsWith("/api/pets/"))
+        return Promise.resolve(mockPetWithoutPhone);
+      if (url === "/api/pets") return Promise.resolve([mockPetWithoutPhone]);
+      return Promise.resolve({});
+    });
+
+    render(<HospitalPage />);
+
+    await waitFor(
+      () => {
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      },
+      { timeout: 3000 },
+    );
+
+    expect(
+      screen.queryByRole("link", { name: "緊急発信" }),
+    ).not.toBeInTheDocument();
   });
 });
