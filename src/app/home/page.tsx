@@ -166,15 +166,21 @@ export default function CareHomePage() {
   // editingTodoIdの有無で「新規追加」か「既存の更新」かを分岐する
   const onSubmitTodo = async (values: TodoFormValues) => {
     if (editingTodoId) {
-      // 編集モード：本来はPATCH /api/todos/:todoIdを呼ぶ必要があるが、
-      // バックエンド未接続のため現時点ではフロント側のstateのみを更新する
-      setTodos((prevTodos) =>
-        prevTodos.map((todo) =>
-          todo.id === editingTodoId
-            ? { ...todo, task_name: values.taskName }
-            : todo,
-        ),
-      );
+      try{
+        await apiFetch(`/api/todos/${editingTodoId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ task_name: values.taskName }),
+        });
+        setTodos((prevTodos) =>
+          prevTodos.map((todo) =>
+            todo.id === editingTodoId
+              ? { ...todo, task_name: values.taskName }
+              : todo
+         )
+        );
+      } catch (err) {
+        console.error("ToDo更新失敗:", err);
+      }
     } else {
       try {
         await apiFetch("/api/todos", {
@@ -250,7 +256,7 @@ export default function CareHomePage() {
           method: "PATCH",
           body: JSON.stringify({
             title: values.title,
-            scheduled_content: values.scheduledContent || null,
+            scheduled_content: values.scheduledContent || undefined,
             scheduled_date: values.scheduledDate,
           }),
         });
@@ -276,7 +282,7 @@ export default function CareHomePage() {
           method: "POST",
           body: JSON.stringify({
               title: values.title,
-              scheduled_content: values.scheduledContent || null,
+              scheduled_content: values.scheduledContent || undefined,
               scheduled_date: values.scheduledDate,
           }),
         });
