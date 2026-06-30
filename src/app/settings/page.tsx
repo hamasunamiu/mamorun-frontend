@@ -554,18 +554,21 @@ export default function SettingsPage() {
         onOpenChange={setIsPetEditModalOpen}
         mode="edit"
         pet={currentPet}
-        onSaved={() => {
+        onSaved={async () => {
           if (currentPet?.id) {
-            fetch(
+            const {
+              data: { session },
+            } = await supabase.auth.getSession();
+            const res = await fetch(
               `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/pets/${currentPet.id}`,
               {
                 headers: {
-                  Authorization: `Bearer ${(async () => (await supabase.auth.getSession()).data.session?.access_token)()}`,
+                  Authorization: `Bearer ${session?.access_token}`,
                 },
               },
-            )
-              .then((res) => res.json())
-              .then((data) => setCurrentPet(data.data));
+            );
+            const data = await res.json();
+            setCurrentPet(data.data);
           }
         }}
       />
