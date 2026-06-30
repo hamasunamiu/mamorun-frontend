@@ -12,6 +12,7 @@ export default function SettingsPage() {
     "morning",
   );
   const [isPremium, setIsPremium] = useState(false);
+  const [isUpgrading, setIsUpgrading] = useState(false);
   const [isLineLinked, setIsLineLinked] = useState(false);
   const [isPetModalOpen, setIsPetModalOpen] = useState(false);
   const [isPetEditModalOpen, setIsPetEditModalOpen] = useState(false);
@@ -39,7 +40,7 @@ export default function SettingsPage() {
       setEmail(session.user.email ?? null);
 
       const response = await fetch(
-        "${process.env.NEXT_PUBLIC_API_BASE_URL}/api/profiles/me",
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/profiles/me`,
         {
           headers: {
             Authorization: `Bearer ${session.access_token}`,
@@ -83,12 +84,15 @@ export default function SettingsPage() {
   };
 
   const handleUpgrade = async () => {
+    if (isUpgrading) return;
+    setIsUpgrading(true);
+
     const {
       data: { session },
     } = await supabase.auth.getSession();
 
     const response = await fetch(
-      "${process.env.NEXT_PUBLIC_API_BASE_URL}/api/stripe/checkout",
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/stripe/checkout`,
       {
         method: "POST",
         headers: {
@@ -101,6 +105,8 @@ export default function SettingsPage() {
     const result = await response.json();
     if (result.data?.url) {
       window.location.href = result.data.url;
+    } else {
+      setIsUpgrading(false);
     }
   };
 
@@ -115,7 +121,7 @@ export default function SettingsPage() {
     } = await supabase.auth.getSession();
 
     const response = await fetch(
-      "${process.env.NEXT_PUBLIC_API_BASE_URL}/api/profiles/me",
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/profiles/me`,
       {
         method: "PATCH",
         headers: {
@@ -140,7 +146,7 @@ export default function SettingsPage() {
     } = await supabase.auth.getSession();
 
     const response = await fetch(
-      "${process.env.NEXT_PUBLIC_API_BASE_URL}/api/profiles/me",
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/profiles/me`,
       {
         method: "PATCH",
         headers: {
@@ -166,7 +172,7 @@ export default function SettingsPage() {
     } = await supabase.auth.getSession();
 
     const response = await fetch(
-      "${process.env.NEXT_PUBLIC_API_BASE_URL}/api/stripe/cancel",
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/stripe/cancel`,
       {
         method: "POST",
         headers: {
@@ -279,8 +285,9 @@ export default function SettingsPage() {
             <PrimaryButton
               className="w-full bg-[#D85A30] hover:bg-[#D85A30] hover:opacity-85 mb-3"
               onClick={handleUpgrade}
+              disabled={isUpgrading}
             >
-              👑 プレミアムにアップグレード
+              {isUpgrading ? "処理中..." : "👑 プレミアムにアップグレード"}
             </PrimaryButton>
           )}
 
@@ -310,7 +317,7 @@ export default function SettingsPage() {
                           data: { session },
                         } = await supabase.auth.getSession();
                         const response = await fetch(
-                          "${process.env.NEXT_PUBLIC_API_BASE_URL}/api/notifications/line/remind",
+                          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/notifications/line/remind`,
                           {
                             method: "POST",
                             headers: {
@@ -377,7 +384,7 @@ export default function SettingsPage() {
                       data: { session },
                     } = await supabase.auth.getSession();
                     const response = await fetch(
-                      "${process.env.NEXT_PUBLIC_API_BASE_URL}/api/profiles/me",
+                      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/profiles/me`,
                       {
                         method: "PATCH",
                         headers: {
