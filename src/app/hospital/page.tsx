@@ -130,6 +130,7 @@ export default function HospitalPage() {
   // 切り替え先のペットのものに更新する必要がある点に注意。
   const handleSwitchPet = (selectedPet: Pet) => {
     setPet(selectedPet);
+    localStorage.setItem('selectedPetId', selectedPet.id);
     reset({
       hospital_name: selectedPet.hospital_name ?? "",
       hospital_phone: selectedPet.hospital_phone ?? "",
