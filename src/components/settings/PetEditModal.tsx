@@ -8,12 +8,11 @@ import { InputField } from "@/components/common/InputField";
 import { TextAreaField } from "@/components/common/TextAreaField";
 import { ToggleOptionGroup } from "@/components/common/ToggleOptionGroup";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
-import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { Modal } from "@/components/common/Modal";
 import { supabase } from "@/lib/supabase";
 
-const petEditSchema = z.object({
+const petSchema = z.object({
   name: z
     .string()
     .min(1, "名前を入力してください")
@@ -33,7 +32,7 @@ const petEditSchema = z.object({
     .or(z.literal("")),
 });
 
-type PetEditFormValues = z.infer<typeof petEditSchema>;
+type PetFormValues = z.infer<typeof petSchema>;
 
 type Pet = {
   id: string;
@@ -47,24 +46,30 @@ type Pet = {
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  pet: Pet | null;
+  mode: "edit" | "add";
+  pet?: Pet | null;
   onSaved: () => void;
 };
 
-export function PetEditModal({ open, onOpenChange, pet, onSaved }: Props) {
+export function PetEditModal({
+  open,
+  onOpenChange,
+  mode,
+  pet,
+  onSaved,
+}: Props) {
   const {
     register,
     handleSubmit,
     control,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<PetEditFormValues>({
-    resolver: zodResolver(petEditSchema),
+  } = useForm<PetFormValues>({
+    resolver: zodResolver(petSchema),
   });
 
-  // モーダルが開くたびに現在のペット情報をフォームにセット
   useEffect(() => {
-    if (pet) {
+    if (mode === "edit" && pet) {
       reset({
         name: pet.name,
         species: pet.species,
@@ -72,29 +77,54 @@ export function PetEditModal({ open, onOpenChange, pet, onSaved }: Props) {
         birthday: pet.birthday,
         illness: pet.illness ?? "",
       });
+    } else if (mode === "add") {
+      reset({
+        name: "",
+        species: undefined as unknown as "dog" | "cat",
+        gender: undefined as unknown as "male" | "female",
+        birthday: "",
+        illness: "",
+      });
     }
-  }, [pet, reset]);
+  }, [open, mode, pet, reset]);
 
-  const onSubmit = async (values: PetEditFormValues) => {
-    console.log("送信データ:", values);
-    console.log("pet:", pet);
-    if (!pet) return;
-
+  const onSubmit = async (values: PetFormValues) => {
     const {
       data: { session },
     } = await supabase.auth.getSession();
 
-    const res = await fetch(`http://localhost:3001/api/pets/${pet.id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session?.access_token}`,
-      },
-      body: JSON.stringify(values),
-    });
-
-    if (!res.ok) {
-      return;
+    if (mode === "edit" && pet) {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/pets/${pet.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify(values),
+        },
+      );
+      if (!res.ok) {
+        alert("ペット情報の更新に失敗しました。");
+        return;
+      }
+    } else if (mode === "add") {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/pets`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify(values),
+        },
+      );
+      if (!res.ok) {
+        alert("ペットの追加に失敗しました。");
+        return;
+      }
     }
 
     onSaved();
@@ -105,8 +135,12 @@ export function PetEditModal({ open, onOpenChange, pet, onSaved }: Props) {
     <Modal
       open={open}
       onOpenChange={onOpenChange}
-      title="ペット情報を編集"
-      description="変更したい項目を編集して保存してください"
+      title={mode === "edit" ? "ペット情報を編集" : "ペットを追加"}
+      description={
+        mode === "edit"
+          ? "変更したい項目を編集して保存してください"
+          : "新しいペットの情報を入力してください"
+      }
       footer={
         <PrimaryButton
           type="button"
@@ -114,7 +148,13 @@ export function PetEditModal({ open, onOpenChange, pet, onSaved }: Props) {
           disabled={isSubmitting}
           className="w-full rounded-3xl bg-[#C69A6B] hover:bg-[#C69A6B] hover:opacity-85"
         >
-          {isSubmitting ? <LoadingSpinner size="sm" /> : "保存する"}
+          {isSubmitting ? (
+            <LoadingSpinner size="sm" />
+          ) : mode === "edit" ? (
+            "保存する"
+          ) : (
+            "追加する"
+          )}
         </PrimaryButton>
       }
     >
