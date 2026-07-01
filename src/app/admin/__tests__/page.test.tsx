@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import AdminPage from "../page";
 
@@ -67,10 +67,10 @@ describe("AdminPage", () => {
 
       await user.click(screen.getByRole("button", { name: "ログアウト" }));
 
-      const modalButtons = screen.getAllByRole("button", {
-        name: "ログアウト",
-      });
-      await user.click(modalButtons[modalButtons.length - 1]);
+      const dialog = screen.getByRole("dialog");
+      await user.click(
+        within(dialog).getByRole("button", { name: "ログアウト" }),
+      );
 
       expect(mockSignOut).toHaveBeenCalledTimes(1);
     });
