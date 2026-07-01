@@ -153,20 +153,41 @@ export default function CareHomePage() {
     const todo = todos.find((t) => t.id === todoId);
     if (!todo) return;
 
+    const nextIsCompleted = !todo.is_completed;
+
+    // 楽観的更新：自分の操作なので、Realtimeを待たずにその場で表示を更新する
+    setTodos((prevTodos) =>
+      prevTodos.map((t) =>
+        t.id === todoId
+          ? {
+              ...t,
+              is_completed: nextIsCompleted,
+              completed_by: nextIsCompleted
+                ? { display_name: profile?.display_name ?? null }
+                : null,
+            }
+          : t,
+      ),
+    );
+
     try {
       await apiFetch(`/api/todos/${todoId}`, {
         method: "PATCH",
-        body: JSON.stringify({ is_completed: !todo.is_completed }),
+        body: JSON.stringify({ is_completed: nextIsCompleted }),
       });
     } catch (err) {
-      console.error("ToDo完了切り替え失敗;", err);
+      console.error("ToDo完了切り替え失敗:", err);
+      // 失敗時はロールバック（元の状態に戻す）
+      setTodos((prevTodos) =>
+        prevTodos.map((t) => (t.id === todoId ? todo : t)),
+      );
     }
   };
 
   // editingTodoIdの有無で「新規追加」か「既存の更新」かを分岐する
   const onSubmitTodo = async (values: TodoFormValues) => {
     if (editingTodoId) {
-      try{
+      try {
         await apiFetch(`/api/todos/${editingTodoId}`, {
           method: "PATCH",
           body: JSON.stringify({ task_name: values.taskName }),
@@ -175,8 +196,8 @@ export default function CareHomePage() {
           prevTodos.map((todo) =>
             todo.id === editingTodoId
               ? { ...todo, task_name: values.taskName }
-              : todo
-         )
+              : todo,
+          ),
         );
       } catch (err) {
         console.error("ToDo更新失敗:", err);
@@ -238,15 +259,10 @@ export default function CareHomePage() {
         method: "PATCH",
         body: JSON.stringify({ is_completed: !schedule.is_completed }),
       });
-      setSchedules((prevSchedules) =>
-        prevSchedules.map((s) =>
-          s.id === scheduleId ? { ...s, is_completed: !s.is_completed } : s
-    )
-   );
-  } catch (err) {
-   console.error("スケジュール完了切り替え失敗:", err);
-  }
-};
+    } catch (err) {
+      console.error("スケジュール完了切り替え失敗:", err);
+    }
+  };
 
   // editingScheduleIdの有無で「新規追加」か「既存の更新」かを分岐する
   const onSubmitSchedule = async (values: ScheduleFormValues) => {
@@ -260,36 +276,23 @@ export default function CareHomePage() {
             scheduled_date: values.scheduledDate,
           }),
         });
-        setSchedules((prevSchedules) =>
-          prevSchedules.map((schedule) =>
-            schedule.id === editingScheduleId
-              ? {
-                  ...schedule,
-                  title: values.title,
-                  scheduled_content: values.scheduledContent || null,
-                  scheduled_date: values.scheduledDate,
-                }
-              : schedule
-            )
-          );
-        } catch (err) {
-          console.error("スケジュール更新失敗:", err);
-        }
+      } catch (err) {
+        console.error("スケジュール更新失敗:", err);
+      }
     } else {
       //新規追加モード
       try {
-        const newSchedule = await apiFetch<Schedule>("/api/schedules", {
+        await apiFetch("/api/schedules", {
           method: "POST",
           body: JSON.stringify({
-              title: values.title,
-              scheduled_content: values.scheduledContent || undefined,
-              scheduled_date: values.scheduledDate,
+            title: values.title,
+            scheduled_content: values.scheduledContent || undefined,
+            scheduled_date: values.scheduledDate,
           }),
         });
-        setSchedules((prevSchedules) => [...prevSchedules, newSchedule]);
-       } catch (err) {
+      } catch (err) {
         console.error("スケジュール追加失敗:", err);
-       }
+      }
     }
 
     resetScheduleForm();
@@ -301,25 +304,24 @@ export default function CareHomePage() {
     if (!deleteTarget) return;
 
     try {
-    if (deleteTarget.type === "todo") {
-      await apiFetch(`/api/todos/${deleteTarget.id}`, { method: "DELETE" });
-      // Realtimeがstateを更新するので setTodos は不要
-    } else {
-      await apiFetch(`/api/schedules/${deleteTarget.id}`, { method: "DELETE" });
-      setSchedules((prevSchedules) =>
-        prevSchedules.filter((schedule) => schedule.id !== deleteTarget.id)
-      );
+      if (deleteTarget.type === "todo") {
+        await apiFetch(`/api/todos/${deleteTarget.id}`, { method: "DELETE" });
+        // Realtimeがstateを更新するので setTodos は不要
+      } else {
+        await apiFetch(`/api/schedules/${deleteTarget.id}`, {
+          method: "DELETE",
+        });
+      }
+    } catch (err) {
+      console.error("削除失敗:", err);
     }
-  } catch (err) {
-    console.error("削除失敗:", err);
-  }
 
-  setDeleteTarget(null);
-};
+    setDeleteTarget(null);
+  };
 
   const handleSwitchPet = (selectedPet: Pet) => {
     setPet(selectedPet);
-    localStorage.setItem('selectedPetId', selectedPet.id);
+    localStorage.setItem("selectedPetId", selectedPet.id);
     setIsPetSwitchModalOpen(false);
   };
 
@@ -329,7 +331,7 @@ export default function CareHomePage() {
 
   if (isLoading) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-md items-center justify-center bg-[#FAF8F6]">
+      <main className="mx-auto flex h-dvh w-full max-w-[430px] items-center justify-center bg-[#FAF8F6]">
         <LoadingSpinner size="lg" />
       </main>
     );
@@ -337,7 +339,7 @@ export default function CareHomePage() {
 
   if (loadError) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-md items-center justify-center bg-[#FAF8F6] px-6">
+      <main className="mx-auto flex h-dvh w-full max-w-[430px] items-center justify-center bg-[#FAF8F6] px-6">
         <ErrorMessage message={loadError} />
       </main>
     );
@@ -348,7 +350,7 @@ export default function CareHomePage() {
   // ------------------------------------------------------------
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-[#FAF8F6]">
+    <div className="mx-auto flex h-dvh w-full max-w-[430px] flex-col overflow-hidden bg-[#FAF8F6]">
       <Header
         petName={pet?.name}
         petSpecies={pet?.species}
@@ -365,9 +367,9 @@ export default function CareHomePage() {
         }
       />
 
-      <main className="flex-1 px-6 py-6">
+      <main className="flex-1 overflow-y-auto px-6 py-6">
         {isMounted && (
-          <p className="mb-5 text-lg font-semibold text-[#9E7654]">
+          <p className="mb-5 text-xl font-semibold text-accent-foreground">
             {formatDateLabel(new Date())}
           </p>
         )}

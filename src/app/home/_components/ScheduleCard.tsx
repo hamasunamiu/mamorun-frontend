@@ -40,8 +40,8 @@ export function ScheduleCard({
         aria-label={`${title}を${isCompleted ? "未完了" : "完了"}にする`}
         className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 ${
           isCompleted
-            ? "border-[#C4956A] bg-[#C4956A]"
-            : "border-[#D8C0A8] bg-white"
+            ? "border-primary bg-primary"
+            : "border-accent-foreground/30 bg-white"
         }`}
       >
         {isCompleted && (
@@ -63,28 +63,28 @@ export function ScheduleCard({
       </button>
 
       <div className="min-w-0 flex-1">
-          <span
-            className={`block truncate text-sm font-medium ${
-              isCompleted
-                ? "text-muted-foreground line-through"
-                : "text-foreground"
-            }`}
-          >
-            {title}
-          </span>
-          {content && (
-            <p className="mt-1 text-xs text-muted-foreground">{content}</p>
-          )} 
+        <span
+          className={`block truncate text-sm font-medium ${
+            isCompleted
+              ? "text-muted-foreground line-through"
+              : "text-foreground"
+          }`}
+        >
+          {title}
+        </span>
+        {content && (
+          <p className="mt-1 text-xs text-muted-foreground">{content}</p>
+        )}
       </div>
 
       {/* ★日付＋あと○日表示。期限切れの場合は注意を引く色にする（色だけでなくテキスト自体が意味を持つ） */}
       <span
         className={`shrink-0 text-sm font-medium ${
-          isOverdue ? "text-destructive" : "text-[#9E7654]"
+          isOverdue ? "text-destructive" : "text-accent-foreground"
         }`}
-        >
-          {daysUntilLabel}
-        </span>
+      >
+        {daysUntilLabel}
+      </span>
 
       {/* ★変更：削除ボタン単体ではなく、編集・削除をまとめたケバブメニューに変更 */}
       <DropdownMenu>
