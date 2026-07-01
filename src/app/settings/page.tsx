@@ -7,220 +7,177 @@ import { Modal } from "@/components/common/Modal";
 import { supabase } from "@/lib/supabase";
 import { PetEditModal } from "@/components/settings/PetEditModal";
 import { apiFetch, ApiError } from "@/lib/api-client";
-
+import { useSearchParams } from "next/navigation"; 
+ 
+type Profile = {
+  id: string;
+  is_premium: boolean;
+  line_user_id: string | null;
+  pet_id: string | null;
+  notification_time: "morning" | "night";
+};
+ 
+type Pet = {
+  id: string;
+  name: string;
+  species: "dog" | "cat";
+  gender: "male" | "female";
+  birthday: string;
+  illness?: string;
+};
+ 
 export default function SettingsPage() {
-  const [notificationTime, setNotificationTime] = useState<"morning" | "night">(
-    "morning",
-  );
+  const [notificationTime, setNotificationTime] = useState<"morning" | "night">("morning");
   const [isPremium, setIsPremium] = useState(false);
   const [isUpgrading, setIsUpgrading] = useState(false);
   const [isLineLinked, setIsLineLinked] = useState(false);
   const [isPetModalOpen, setIsPetModalOpen] = useState(false);
   const [isPetEditModalOpen, setIsPetEditModalOpen] = useState(false);
-  const [currentPet, setCurrentPet] = useState<{
-    id: string;
-    name: string;
-    species: "dog" | "cat";
-    gender: "male" | "female";
-    birthday: string;
-    illness?: string;
-  } | null>(null);
+  const [currentPet, setCurrentPet] = useState<Pet | null>(null);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isLineUnlinkModalOpen, setIsLineUnlinkModalOpen] = useState(false);
-  const [isPremiumCancelModalOpen, setIsPremiumCancelModalOpen] =
-    useState(false);
+  const [isPremiumCancelModalOpen, setIsPremiumCancelModalOpen] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [isInviting, setIsInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
-
+  const searchParams = useSearchParams();
+ 
   useEffect(() => {
     const fetchProfile = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       setEmail(session.user.email ?? null);
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/profiles/me`,
-        {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        },
-      );
-
-      // ✅ 修正後：正常なときだけdataを取る
-      if (response.ok) {
-        const result = await response.json();
-        if (result.data) {
-          setIsPremium(result.data.is_premium);
-          setIsLineLinked(!!result.data.line_user_id);
-          // ペット情報取得
-          const petId = result.data.pet_id;
-          if (petId) {
-            const petRes = await fetch(
-              `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/pets/${petId}`,
-              {
-                headers: {
-                  Authorization: `Bearer ${session.access_token}`,
-                },
-              },
-            );
-            const petData = await petRes.json();
-            if (petData.data) {
-              setCurrentPet(petData.data);
-            }
-          }
+ 
+      try {
+        const profile = await apiFetch<Profile>("/api/profiles/me");
+        setIsPremium(profile.is_premium);
+        setIsLineLinked(!!profile.line_user_id);
+        setNotificationTime(profile.notification_time ?? "morning");
+ 
+        if (profile.pet_id) {
+          const petData = await apiFetch<Pet>(`/api/pets/${profile.pet_id}`);
+          setCurrentPet(petData);
         }
+      } catch (err) {
+        console.error("プロフィール取得失敗:", err);
       }
     };
-
+ 
     fetchProfile();
-  }, []);
-
+  }, [searchParams]);
+ 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = "/login";
     setIsLogoutModalOpen(false);
   };
-
+ 
   const handleCreateInvite = async () => {
-  if (!currentPet?.id || isInviting) return;
-  setIsInviting(true);
-  setInviteError(null);
-
-  try {
-    const data = await apiFetch<{ invite_url: string; expires_at: string }>(
-      `/api/pets/${currentPet.id}/invite`,
-      { method: "POST" }
-    );
-    setInviteUrl(data.invite_url);
-  } catch (err) {
-    setInviteError(
-      err instanceof ApiError
-        ? err.message
-        : "招待URLの発行に失敗しました。"
-    );
-  } finally {
-    setIsInviting(false);
-  }
-};
-
+    if (!currentPet?.id || isInviting) return;
+    setIsInviting(true);
+    setInviteError(null);
+ 
+    try {
+      const data = await apiFetch<{ invite_url: string; expires_at: string }>(
+        `/api/pets/${currentPet.id}/invite`,
+        { method: "POST" }
+      );
+      setInviteUrl(data.invite_url);
+    } catch (err) {
+      setInviteError(
+        err instanceof ApiError
+          ? err.message
+          : "招待URLの発行に失敗しました。"
+      );
+    } finally {
+      setIsInviting(false);
+    }
+  };
+ 
   const handleUpgrade = async () => {
     if (isUpgrading) return;
     setIsUpgrading(true);
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/stripe/checkout`,
-      {
+ 
+    try {
+      const result = await apiFetch<{ url: string }>("/api/stripe/checkout", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`,
-          "Content-Type": "application/json",
-        },
-      },
-    );
-
-    const result = await response.json();
-    if (result.data?.url) {
-      window.location.href = result.data.url;
-    } else {
+      });
+      if (result.url) {
+        window.location.href = result.url;
+      } else {
+        setIsUpgrading(false);
+      }
+    } catch (err) {
+      console.error("アップグレード失敗:", err);
       setIsUpgrading(false);
     }
   };
-
+ 
   const handleLineLink = async () => {
-    const lineUserId = prompt(
-      "LINE IDを入力してください（例：Uxxxxxxxxxxxxxxxx）",
-    );
+    const lineUserId = prompt("LINE IDを入力してください（例：Uxxxxxxxxxxxxxxxx）");
     if (!lineUserId) return;
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/profiles/me`,
-      {
+ 
+    try {
+      await apiFetch("/api/profiles/me", {
         method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`,
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({ line_user_id: lineUserId }),
-      },
-    );
-
-    if (!response.ok) {
+      });
+      setIsLineLinked(true);
+    } catch (err) {
       alert("LINE連携に失敗しました。");
-      return;
     }
-
-    setIsLineLinked(true);
   };
-
+ 
   const handleLineUnlink = async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/profiles/me`,
-      {
+    try {
+      await apiFetch("/api/profiles/me", {
         method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`,
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({ line_user_id: null }),
-      },
-    );
-
-    if (!response.ok) {
+      });
+      setIsLineLinked(false);
+      setIsLineUnlinkModalOpen(false);
+    } catch (err) {
       alert("LINE連携の解除に失敗しました。");
-      return;
     }
-
-    setIsLineLinked(false);
-    setIsLineUnlinkModalOpen(false);
   };
-
+ 
   const handlePremiumCancel = async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/stripe/cancel`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`,
-          "Content-Type": "application/json",
-        },
-      },
-    );
-
-    if (!response.ok) {
+    try {
+      await apiFetch("/api/stripe/cancel", { method: "POST" });
+      setIsPremium(false);
+      setIsPremiumCancelModalOpen(false);
+    } catch (err) {
       alert("解約処理に失敗しました。");
-      return;
     }
-
-    setIsPremium(false);
-    setIsPremiumCancelModalOpen(false);
   };
-
+ 
+  const handleSaveNotificationTime = async () => {
+    try {
+      await apiFetch("/api/profiles/me", {
+        method: "PATCH",
+        body: JSON.stringify({ notification_time: notificationTime }),
+      });
+      alert("通知時間を保存しました！");
+    } catch (err) {
+      alert("通知時間の保存に失敗しました。");
+    }
+  };
+ 
+  const handleSendLineTest = async () => {
+    try {
+      await apiFetch("/api/notifications/line/remind", { method: "POST" });
+      alert("LINEを送信しました！");
+    } catch (err) {
+      alert("LINEの送信に失敗しました。");
+    }
+  };
+ 
   return (
     <div className="min-h-screen bg-[#FFF9F5] pb-20">
       <Header title="設定" />
-
+ 
       <div className="p-4 flex flex-col gap-3">
         {/* アカウント情報 */}
         <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
@@ -246,7 +203,7 @@ export default function SettingsPage() {
             )}
           </div>
         </div>
-
+ 
         {/* ペット情報 */}
         <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
           <p className="text-xs font-medium text-[#993C1D] mb-3">
@@ -278,7 +235,7 @@ export default function SettingsPage() {
             <span className="text-gray-400">›</span>
           </button>
         </div>
-
+ 
         {/* 家族を招待する */}
         <div
           className="bg-white rounded-2xl border border-[#e0d6ce] p-4 cursor-pointer"
@@ -297,7 +254,7 @@ export default function SettingsPage() {
             <span className="text-gray-400">›</span>
           </div>
         </div>
-
+ 
         {/* プレミアムプラン（LINE連携・通知設定・解約含む） */}
         <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
           <p className="text-xs font-medium text-[#993C1D] mb-3">
@@ -306,7 +263,7 @@ export default function SettingsPage() {
           <p className="text-sm text-gray-500 leading-relaxed mb-3">
             AI相談が無制限・LINE通知が使えるようになります。月額500円（税込）
           </p>
-
+ 
           {!isPremium && (
             <PrimaryButton
               className="w-full bg-[#D85A30] hover:bg-[#D85A30] hover:opacity-85 mb-3"
@@ -316,7 +273,7 @@ export default function SettingsPage() {
               {isUpgrading ? "処理中..." : "👑 プレミアムにアップグレード"}
             </PrimaryButton>
           )}
-
+ 
           <div
             className={`flex flex-col gap-3 ${!isPremium ? "opacity-40 pointer-events-none" : ""}`}
           >
@@ -337,28 +294,7 @@ export default function SettingsPage() {
                   </div>
                   <button
                     className="text-base bg-transparent border-none p-0 cursor-pointer self-start"
-                    onClick={() => {
-                      const sendLineTest = async () => {
-                        const {
-                          data: { session },
-                        } = await supabase.auth.getSession();
-                        const response = await fetch(
-                          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/notifications/line/remind`,
-                          {
-                            method: "POST",
-                            headers: {
-                              Authorization: `Bearer ${session?.access_token}`,
-                            },
-                          },
-                        );
-                        if (!response.ok) {
-                          alert("LINEの送信に失敗しました。");
-                          return;
-                        }
-                        alert("LINEを送信しました！");
-                      };
-                      sendLineTest();
-                    }}
+                    onClick={handleSendLineTest}
                   >
                     📨
                   </button>
@@ -372,7 +308,7 @@ export default function SettingsPage() {
                 </PrimaryButton>
               )}
             </div>
-
+ 
             {isLineLinked && (
               <div className="border-t border-[#f0e8e0] pt-3">
                 <p className="text-xs font-medium text-gray-600 mb-2">
@@ -405,35 +341,13 @@ export default function SettingsPage() {
                 </div>
                 <PrimaryButton
                   className="w-full bg-[#D85A30] hover:bg-[#D85A30] hover:opacity-85 mt-2"
-                  onClick={async () => {
-                    const {
-                      data: { session },
-                    } = await supabase.auth.getSession();
-                    const response = await fetch(
-                      `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/profiles/me`,
-                      {
-                        method: "PATCH",
-                        headers: {
-                          Authorization: `Bearer ${session?.access_token}`,
-                          "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                          notification_time: notificationTime,
-                        }),
-                      },
-                    );
-                    if (!response.ok) {
-                      alert("通知時間の保存に失敗しました。");
-                      return;
-                    }
-                    alert("通知時間を保存しました！");
-                  }}
+                  onClick={handleSaveNotificationTime}
                 >
                   通知時間を保存する
                 </PrimaryButton>
               </div>
             )}
-
+ 
             {isPremium && (
               <div className="border-t border-[#f0e8e0] pt-3">
                 <button
@@ -446,7 +360,7 @@ export default function SettingsPage() {
             )}
           </div>
         </div>
-
+ 
         <PrimaryButton
           className="w-full border border-[#e0d6ce] bg-transparent text-gray-500 hover:bg-gray-50"
           onClick={() => setIsLogoutModalOpen(true)}
@@ -454,59 +368,59 @@ export default function SettingsPage() {
           ログアウト
         </PrimaryButton>
       </div>
-
+ 
       <Modal
-  open={isInviteModalOpen}
-  onOpenChange={(open) => {
-    setIsInviteModalOpen(open);
-    if (!open) {
-      setInviteUrl(null);
-      setInviteError(null);
-    }
-  }}
-  title="家族を招待する"
-  description="招待URLを発行して家族と共有しましょう。"
-  footer={
-    inviteUrl ? (
-      <div className="flex flex-col gap-2 w-full">
-        <input
-          readOnly
-          value={inviteUrl}
-          className="text-xs border border-[#e0d6ce] rounded-lg px-3 py-2 bg-[#FFF9F5]"
-          onClick={(e) => e.currentTarget.select()}
-        />
-        <button
-          className="flex-1 py-2 rounded-lg border border-[#e0d6ce] text-sm text-gray-500"
-          onClick={() => setIsInviteModalOpen(false)}
-        >
-          閉じる
-        </button>
-      </div>
-    ) : (
-      <div className="flex flex-col gap-2 w-full">
-        {inviteError && (
-          <p className="text-xs text-red-500 text-center">{inviteError}</p>
-        )}
-        <div className="flex gap-2 w-full">
-          <button
-            className="flex-1 py-2 rounded-lg border border-[#e0d6ce] text-sm text-gray-500"
-            onClick={() => setIsInviteModalOpen(false)}
-          >
-            閉じる
-          </button>
-          <PrimaryButton
-            className="flex-1 bg-[#D85A30] hover:bg-[#D85A30] hover:opacity-85"
-            onClick={handleCreateInvite}
-            disabled={isInviting}
-          >
-            {isInviting ? "発行中..." : "URLを発行する"}
-          </PrimaryButton>
-        </div>
-      </div>
-    )
-  }
-/>
-
+        open={isInviteModalOpen}
+        onOpenChange={(open) => {
+          setIsInviteModalOpen(open);
+          if (!open) {
+            setInviteUrl(null);
+            setInviteError(null);
+          }
+        }}
+        title="家族を招待する"
+        description="招待URLを発行して家族と共有しましょう。"
+        footer={
+          inviteUrl ? (
+            <div className="flex flex-col gap-2 w-full">
+              <input
+                readOnly
+                value={inviteUrl}
+                className="text-xs border border-[#e0d6ce] rounded-lg px-3 py-2 bg-[#FFF9F5]"
+                onClick={(e) => e.currentTarget.select()}
+              />
+              <button
+                className="flex-1 py-2 rounded-lg border border-[#e0d6ce] text-sm text-gray-500"
+                onClick={() => setIsInviteModalOpen(false)}
+              >
+                閉じる
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2 w-full">
+              {inviteError && (
+                <p className="text-xs text-red-500 text-center">{inviteError}</p>
+              )}
+              <div className="flex gap-2 w-full">
+                <button
+                  className="flex-1 py-2 rounded-lg border border-[#e0d6ce] text-sm text-gray-500"
+                  onClick={() => setIsInviteModalOpen(false)}
+                >
+                  閉じる
+                </button>
+                <PrimaryButton
+                  className="flex-1 bg-[#D85A30] hover:bg-[#D85A30] hover:opacity-85"
+                  onClick={handleCreateInvite}
+                  disabled={isInviting}
+                >
+                  {isInviting ? "発行中..." : "URLを発行する"}
+                </PrimaryButton>
+              </div>
+            </div>
+          )
+        }
+      />
+ 
       <Modal
         open={isLineUnlinkModalOpen}
         onOpenChange={(open) => setIsLineUnlinkModalOpen(open)}
@@ -529,7 +443,7 @@ export default function SettingsPage() {
           </div>
         }
       />
-
+ 
       <Modal
         open={isPremiumCancelModalOpen}
         onOpenChange={(open) => setIsPremiumCancelModalOpen(open)}
@@ -552,7 +466,7 @@ export default function SettingsPage() {
           </div>
         }
       />
-
+ 
       <Modal
         open={isLogoutModalOpen}
         onOpenChange={(open) => setIsLogoutModalOpen(open)}
@@ -574,7 +488,7 @@ export default function SettingsPage() {
           </div>
         }
       />
-
+ 
       <PetEditModal
         open={isPetEditModalOpen}
         onOpenChange={setIsPetEditModalOpen}
@@ -582,33 +496,27 @@ export default function SettingsPage() {
         pet={currentPet}
         onSaved={async () => {
           if (currentPet?.id) {
-            const {
-              data: { session },
-            } = await supabase.auth.getSession();
-            const res = await fetch(
-              `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/pets/${currentPet.id}`,
-              {
-                headers: {
-                  Authorization: `Bearer ${session?.access_token}`,
-                },
-              },
-            );
-            const data = await res.json();
-            setCurrentPet(data.data);
+            try {
+              const petData = await apiFetch<Pet>(`/api/pets/${currentPet.id}`);
+              setCurrentPet(petData);
+            } catch (err) {
+              console.error("ペット情報の再取得に失敗:", err);
+            }
           }
         }}
       />
-
+ 
       <PetEditModal
         open={isPetModalOpen}
         onOpenChange={setIsPetModalOpen}
         mode="add"
         onSaved={() => {}}
       />
-
+ 
       <div className="fixed bottom-0 left-0 right-0">
         <BottomNavigation />
       </div>
     </div>
   );
 }
+ 
