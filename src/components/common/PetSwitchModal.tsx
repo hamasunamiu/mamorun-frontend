@@ -1,5 +1,6 @@
 "use client";
 
+import { Dog, Cat } from "lucide-react";
 import { Modal } from "@/components/common/Modal";
 import type { Pet } from "@/types";
 
@@ -35,9 +36,11 @@ export function PetSwitchModal({
                   : "border-border bg-background text-foreground"
               }`}
             >
-              <span aria-hidden="true">
-                {p.species === "dog" ? "🐶" : "🐱"}
-              </span>
+              {p.species === "dog" ? (
+                <Dog className="h-5 w-5" aria-hidden="true" />
+              ) : (
+                <Cat className="h-5 w-5" aria-hidden="true" />
+              )}
               {p.name}
             </button>
           );
