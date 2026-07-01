@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useEntityModal } from "./_components/useEntityModal";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -19,6 +20,7 @@ import { ScheduleFormModal } from "./_components/ScheduleFormModal";
 import { TodoSection } from "./_components/TodoSection";
 import { ScheduleSection } from "./_components/ScheduleSection";
 import { apiFetch } from "@/lib/api-client";
+import { setSelectedPetId } from "@/lib/petStorage";
 
 // ============================================================
 // フォーム用Zodスキーマ（画面設計書のバリデーション表に準拠）
@@ -74,7 +76,6 @@ export default function CareHomePage() {
     todos,
     setTodos,
     schedules,
-    setSchedules,
     petList,
     isLoading,
     loadError,
@@ -84,12 +85,8 @@ export default function CareHomePage() {
   // ------------------------------------------------------------
   // state（このコンポーネント固有のUI状態）
   // ------------------------------------------------------------
-  const [isTodoModalOpen, setIsTodoModalOpen] = useState(false);
-  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
-  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(
-    null,
-  );
+  const todoModal = useEntityModal();
+  const scheduleModal = useEntityModal();
   const [isPetSwitchModalOpen, setIsPetSwitchModalOpen] = useState(false);
 
   // 削除確認Modal用：「何を削除しようとしているか」をtype/id/nameで保持し、
@@ -134,9 +131,8 @@ export default function CareHomePage() {
   // ------------------------------------------------------------
 
   const handleStartAddTodo = () => {
-    setEditingTodoId(null);
     resetTodoForm({ taskName: "" });
-    setIsTodoModalOpen(true);
+    todoModal.openForAdd();
   };
 
   const handleRequestDeleteTodo = (todo: Todo) => {
@@ -144,9 +140,8 @@ export default function CareHomePage() {
   };
 
   const handleStartEditTodo = (todo: Todo) => {
-    setEditingTodoId(todo.id);
     resetTodoForm({ taskName: todo.task_name });
-    setIsTodoModalOpen(true);
+    todoModal.openForEdit(todo.id);
   };
 
   const handleToggleTodo = async (todoId: string) => {
@@ -186,15 +181,15 @@ export default function CareHomePage() {
 
   // editingTodoIdの有無で「新規追加」か「既存の更新」かを分岐する
   const onSubmitTodo = async (values: TodoFormValues) => {
-    if (editingTodoId) {
+    if (todoModal.editingId) {
       try {
-        await apiFetch(`/api/todos/${editingTodoId}`, {
+        await apiFetch(`/api/todos/${todoModal.editingId}`, {
           method: "PATCH",
           body: JSON.stringify({ task_name: values.taskName }),
         });
         setTodos((prevTodos) =>
           prevTodos.map((todo) =>
-            todo.id === editingTodoId
+            todo.id === todoModal.editingId
               ? { ...todo, task_name: values.taskName }
               : todo,
           ),
@@ -214,8 +209,7 @@ export default function CareHomePage() {
     }
 
     resetTodoForm();
-    setEditingTodoId(null);
-    setIsTodoModalOpen(false);
+    todoModal.close();
   };
 
   // ------------------------------------------------------------
@@ -223,13 +217,12 @@ export default function CareHomePage() {
   // ------------------------------------------------------------
 
   const handleStartAddSchedule = () => {
-    setEditingScheduleId(null);
     resetScheduleForm({
       title: "",
       scheduledContent: "",
       scheduledDate: "",
     });
-    setIsScheduleModalOpen(true);
+    scheduleModal.openForAdd();
   };
 
   const handleRequestDeleteSchedule = (schedule: Schedule) => {
@@ -241,13 +234,12 @@ export default function CareHomePage() {
   };
 
   const handleStartEditSchedule = (schedule: Schedule) => {
-    setEditingScheduleId(schedule.id);
     resetScheduleForm({
       title: schedule.title,
       scheduledContent: schedule.scheduled_content ?? "",
       scheduledDate: schedule.scheduled_date,
     });
-    setIsScheduleModalOpen(true);
+    scheduleModal.openForEdit(schedule.id);
   };
 
   const handleToggleSchedule = async (scheduleId: string) => {
@@ -266,9 +258,9 @@ export default function CareHomePage() {
 
   // editingScheduleIdの有無で「新規追加」か「既存の更新」かを分岐する
   const onSubmitSchedule = async (values: ScheduleFormValues) => {
-    if (editingScheduleId) {
+    if (scheduleModal.editingId) {
       try {
-        await apiFetch(`/api/schedules/${editingScheduleId}`, {
+        await apiFetch(`/api/schedules/${scheduleModal.editingId}`, {
           method: "PATCH",
           body: JSON.stringify({
             title: values.title,
@@ -296,8 +288,7 @@ export default function CareHomePage() {
     }
 
     resetScheduleForm();
-    setEditingScheduleId(null);
-    setIsScheduleModalOpen(false);
+    scheduleModal.close();
   };
 
   const handleConfirmDelete = async () => {
@@ -321,7 +312,7 @@ export default function CareHomePage() {
 
   const handleSwitchPet = (selectedPet: Pet) => {
     setPet(selectedPet);
-    localStorage.setItem("selectedPetId", selectedPet.id);
+    setSelectedPetId(selectedPet.id);
     setIsPetSwitchModalOpen(false);
   };
 
@@ -396,12 +387,11 @@ export default function CareHomePage() {
 
       {/* ToDo追加・編集用のModal */}
       <TodoFormModal
-        open={isTodoModalOpen}
-        onOpenChange={(open) => {
-          setIsTodoModalOpen(open);
-          if (!open) setEditingTodoId(null);
-        }}
-        isEditing={editingTodoId !== null}
+        open={todoModal.isOpen}
+        onOpenChange={(open) =>
+          open ? todoModal.openForAdd() : todoModal.close()
+        }
+        isEditing={todoModal.isEditing}
         onSubmit={handleSubmitTodo(onSubmitTodo)}
         register={registerTodo}
         errors={todoErrors}
@@ -409,12 +399,11 @@ export default function CareHomePage() {
 
       {/* 予定追加・編集用のModal */}
       <ScheduleFormModal
-        open={isScheduleModalOpen}
-        onOpenChange={(open) => {
-          setIsScheduleModalOpen(open);
-          if (!open) setEditingScheduleId(null);
-        }}
-        isEditing={editingScheduleId !== null}
+        open={scheduleModal.isOpen}
+        onOpenChange={(open) =>
+          open ? scheduleModal.openForAdd() : scheduleModal.close()
+        }
+        isEditing={scheduleModal.isEditing}
         onSubmit={handleSubmitSchedule(onSubmitSchedule)}
         register={registerSchedule}
         errors={scheduleErrors}
@@ -428,9 +417,7 @@ export default function CareHomePage() {
         onConfirm={handleConfirmDelete}
       />
 
-      {/* ペット切り替え用のModal（2匹以上の場合に表示）
-      現時点ではMOCK_PET_LISTを使用。複数ペット取得APIの仕様確定後、
-      GET /api/pets相当のレスポンスをpetListにセットするだけで完成する設計 */}
+      {/* ペット切り替え用のModal（2匹以上の場合に表示） */}
       <PetSwitchModal
         open={isPetSwitchModalOpen}
         onOpenChange={setIsPetSwitchModalOpen}

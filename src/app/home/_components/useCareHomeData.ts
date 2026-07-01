@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { supabase } from "@/lib/supabase";
+import { getSelectedPetId, clearSelectedPetId } from "@/lib/petStorage";
 import type { Profile, Pet, Todo, Schedule } from "./types";
 
 export function useCareHomeData() {
@@ -51,14 +52,14 @@ export function useCareHomeData() {
           ]);
 
         //localStorageに保存されたペットIDがあればそちらを優先
-        const savedPetId = localStorage.getItem("selectedPetId");
+        const savedPetId = getSelectedPetId();
         if (savedPetId && savedPetId !== profileData.pet_id) {
           try {
             const savedPetData = await apiFetch<Pet>(`/api/pets/${savedPetId}`);
             setPet(savedPetData);
           } catch {
             setPet(petData);
-            localStorage.removeItem("selectedPetId");
+            clearSelectedPetId();
           }
         } else {
           setPet(petData);
