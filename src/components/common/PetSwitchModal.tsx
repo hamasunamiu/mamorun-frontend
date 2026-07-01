@@ -32,7 +32,7 @@ export function PetSwitchModal({
               aria-pressed={isSelected}
               className={`flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium ${
                 isSelected
-                  ? "border-[#C4956A] bg-[#FBE9DD] text-[#993C1D]"
+                  ? "border-primary bg-accent text-accent-foreground"
                   : "border-border bg-background text-foreground"
               }`}
             >
