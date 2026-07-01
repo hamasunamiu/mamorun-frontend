@@ -124,12 +124,15 @@ export function useCareHomeData() {
             });
           } else if (payload.eventType === "UPDATE") {
 
-            const updatedTodo = payload.new as Todo;
-            setTodos((prevTodos) =>
-              prevTodos.map((todo) =>
-                todo.id === updatedTodo.id ? updatedTodo : todo,
-              ),
-            );
+             try {
+              const latestTodos = await apiFetch<Todo[]>("/api/todos");
+              console.log("[Realtime] 再fetch結果:", latestTodos);
+              if (latestTodos) {
+                setTodos(latestTodos);
+              }
+            } catch (err) {
+              console.error("[Realtime] todos再fetch失敗:", err);
+            }
           } else if (payload.eventType === "DELETE") {
             const deletedTodo = payload.old as Todo;
             setTodos((prevTodos) =>
