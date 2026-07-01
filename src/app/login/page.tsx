@@ -1,13 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Eye, EyeOff, Mail, Lock, Link as LinkIcon, ShieldCheck } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  Link as LinkIcon,
+  ShieldCheck,
+} from "lucide-react";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
@@ -32,6 +39,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // レンダリングを待たずに即座に参照できる二重送信防止用ガード
+  const isSubmittingRef = useRef(false);
 
   const {
     register,
@@ -42,6 +51,10 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (values: LoginFormValues) => {
+    // 連続クリック・連続Enterによる二重送信を防止
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+
     setAuthError(null);
     setIsSubmitting(true);
 
@@ -53,6 +66,7 @@ export default function LoginPage() {
     if (error) {
       setAuthError("メールアドレスまたはパスワードが正しくありません");
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
       return;
     }
 
@@ -63,22 +77,12 @@ export default function LoginPage() {
       if (err instanceof ApiError) {
         setAuthError(err.message);
       } else {
-        setAuthError("通信エラーが発生しました。時間をおいて再度お試しください。");
+        setAuthError(
+          "通信エラーが発生しました。時間をおいて再度お試しください。",
+        );
       }
       setIsSubmitting(false);
-      return;
-    }
-
-    //② JIT同期APIを１度だけ呼び出す
-    try {
-      await apiFetch("/api/auth/sync", { method: "POST" });
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setAuthError(err.message);
-      } else {
-        setAuthError("通信エラーが発生しました。時間をおいて再度お試しください。");
-      }
-      setIsSubmitting(false);
+      isSubmittingRef.current = false;
       return;
     }
 
@@ -92,6 +96,7 @@ export default function LoginPage() {
     }
 
     router.push("/home");
+    // 成功時はページ遷移するため isSubmittingRef のリセットは不要
   };
 
   return (
@@ -121,7 +126,12 @@ export default function LoginPage() {
         </div>
 
         {/* フォーム */}
-        <form onSubmit={handleSubmit(onSubmit)} className="mt-8 flex flex-col gap-4">
+        <form
+          noValidate
+          // eslint-disable-next-line react-hooks/refs
+          onSubmit={handleSubmit(onSubmit)}
+          className="mt-8 flex flex-col gap-4"
+        >
           <div>
             <label className="text-sm font-medium text-[#5C4631]">
               メールアドレス
@@ -139,12 +149,16 @@ export default function LoginPage() {
               />
             </div>
             {errors.email && (
-              <p className="mt-1 text-xs text-destructive">{errors.email.message}</p>
+              <p className="mt-1 text-xs text-destructive">
+                {errors.email.message}
+              </p>
             )}
           </div>
 
           <div>
-            <label className="text-sm font-medium text-[#5C4631]">パスワード</label>
+            <label className="text-sm font-medium text-[#5C4631]">
+              パスワード
+            </label>
             <div className="relative mt-1">
               <Lock
                 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#C69A6B]"
@@ -159,7 +173,9 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
-                aria-label={showPassword ? "パスワードを隠す" : "パスワードを表示する"}
+                aria-label={
+                  showPassword ? "パスワードを隠す" : "パスワードを表示する"
+                }
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-[#C69A6B]"
               >
                 {showPassword ? (
@@ -170,7 +186,9 @@ export default function LoginPage() {
               </button>
             </div>
             {errors.password && (
-              <p className="mt-1 text-xs text-destructive">{errors.password.message}</p>
+              <p className="mt-1 text-xs text-destructive">
+                {errors.password.message}
+              </p>
             )}
           </div>
 
@@ -189,8 +207,11 @@ export default function LoginPage() {
         {/* 新規登録 */}
         <p className="mt-6 text-center text-sm text-[#9E7654]">
           アカウントをお持ちでない方は{" "}
-          <Link href="/register" className="font-semibold text-[#C2693C] underline">
-          新規登録
+          <Link
+            href="/register"
+            className="font-semibold text-[#C2693C] underline"
+          >
+            新規登録
           </Link>
         </p>
 
@@ -213,9 +234,14 @@ export default function LoginPage() {
         {/* 安心・安全のために */}
         <div className="relative mt-6 overflow-hidden rounded-2xl bg-[#FDF1E2] p-4">
           <div className="flex items-start gap-3">
-            <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#C69A6B]" aria-hidden="true" />
+            <ShieldCheck
+              className="mt-0.5 h-5 w-5 shrink-0 text-[#C69A6B]"
+              aria-hidden="true"
+            />
             <div className="pr-12">
-              <p className="text-sm font-semibold text-[#6E5849]">安心・安全のために</p>
+              <p className="text-sm font-semibold text-[#6E5849]">
+                安心・安全のために
+              </p>
               <p className="mt-1 text-xs leading-relaxed text-[#9E7654]">
                 お世話の情報を家族で共有し、もしもの時もすぐに連絡できる安心のアプリです。
               </p>
