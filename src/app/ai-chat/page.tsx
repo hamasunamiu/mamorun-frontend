@@ -6,6 +6,7 @@ import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { Modal } from "@/components/common/Modal";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import type { Pet, Profile } from "@/types";
+import { Stethoscope, Crown, SendHorizontal } from "lucide-react";
 
 type Message = {
   role: "ai" | "user";
@@ -145,8 +146,9 @@ export default function AiChatPage() {
       <div className="px-4 pt-3">
         {isPremium ? (
           <div className="flex justify-end">
-            <span className="bg-[#FAECE7] border border-[#D85A30] text-[#993C1D] text-xs font-medium px-3 py-1 rounded-full">
-              👑 プレミアム会員（無制限）
+            <span className="inline-flex items-center gap-1 bg-[#FAECE7] border border-[#D85A30] text-[#993C1D] text-xs font-medium px-3 py-1 rounded-full">
+              <Crown size={14} color="#993C1D" strokeWidth={1} />
+              プレミアム会員（無制限）
             </span>
           </div>
         ) : (
@@ -166,8 +168,8 @@ export default function AiChatPage() {
             className={`flex ${message.role === "user" ? "justify-end" : "items-start gap-2"}`}
           >
             {message.role === "ai" && (
-              <div className="w-7 h-7 rounded-full bg-[#FAECE7] border border-[#e0c4b0] flex items-center justify-center text-sm flex-shrink-0">
-                🩺
+              <div className="w-7 h-7 rounded-full bg-[#FAECE7] border border-[#e0c4b0] flex items-center justify-center flex-shrink-0">
+                <Stethoscope size={14} className="text-[#993C1D]" />
               </div>
             )}
             <div
@@ -183,8 +185,8 @@ export default function AiChatPage() {
         ))}
         {isSending && (
           <div className="flex items-start gap-2">
-            <div className="w-7 h-7 rounded-full bg-[#FAECE7] border border-[#e0c4b0] flex items-center justify-center text-sm flex-shrink-0">
-              🩺
+            <div className="w-7 h-7 rounded-full bg-[#FAECE7] border border-[#e0c4b0] flex items-center justify-center flex-shrink-0">
+              <Stethoscope size={14} className="text-[#993C1D]" />
             </div>
             <div className="rounded-2xl px-3 py-2.5 text-sm bg-white border border-[#e0d6ce] rounded-tl-none text-gray-400">
               入力中...
@@ -215,7 +217,7 @@ export default function AiChatPage() {
             onClick={handleSubmit}
             disabled={isSubmitDisabled}
           >
-            ➤
+            <SendHorizontal size={18} color="#ffffff" strokeWidth={1} />
           </PrimaryButton>
         </div>
         <p className="text-xs text-gray-400 text-right mt-1">
@@ -243,7 +245,10 @@ export default function AiChatPage() {
                 setIsPremiumModalOpen(false);
               }}
             >
-              👑 アップグレード
+              <span className="flex items-center justify-center gap-1">
+                <Crown size={14} color="#ffffff" strokeWidth={1} />
+                アップグレード
+              </span>
             </PrimaryButton>
           </div>
         }
