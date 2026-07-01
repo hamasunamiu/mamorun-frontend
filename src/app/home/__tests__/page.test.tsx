@@ -41,6 +41,7 @@ const mockProfile: Profile = {
   stripe_customer_id: null,
   pet_id: "pet-1",
   notification_time: "morning",
+  display_name: "まの",
   created_at: "2026-01-01T00:00:00.000Z",
 };
 
@@ -65,6 +66,7 @@ const mockTodo: Todo = {
   task_name: "朝ごはん",
   is_completed: false,
   completed_by_id: null,
+  completed_by: null,
   completed_at: null,
   todo_date: "2026-06-29",
   created_at: "2026-06-29T00:00:00.000Z",
