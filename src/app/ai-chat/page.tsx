@@ -1,28 +1,28 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Header } from "@/components/common/Header";
 import { BottomNavigation } from "@/components/common/BottomNavigation";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { Modal } from "@/components/common/Modal";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import type { Pet, Profile } from "@/types";
- 
+
 type Message = {
   role: "ai" | "user";
   content: string;
 };
- 
+
 type AiChatResponse = {
   reply: string;
   remaining_count: number | null;
 };
- 
+
 type AiUsageResponse = {
   used_count: number;
   remaining_count: number | null;
   is_premium: boolean;
 };
- 
+
 export default function AiChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -32,7 +32,10 @@ export default function AiChatPage() {
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [pet, setPet] = useState<Pet | null>(null);
- 
+
+  // ★自動スクロール用：メッセージ一覧の一番下に置く「目印」要素への参照
+  const bottomRef = useRef<HTMLDivElement>(null);
+
   // ------------------------------------------------------------
   // 初期表示：当日のAI利用回数・プレミアム状態・ペット情報を取得
   // ------------------------------------------------------------
@@ -42,18 +45,18 @@ export default function AiChatPage() {
         const usage = await apiFetch<AiUsageResponse>("/api/ai/usage");
         setIsPremium(usage.is_premium);
         setRemainingCount(usage.remaining_count);
- 
-        const profile = await apiFetch<Profile>("/api/profiles/me");
- 
-        if (profile.pet_id) {
-           const savedPetId = localStorage.getItem('selectedPetId');
-           const targetPetId = savedPetId ?? profile.pet_id;
 
-           const petData = await apiFetch<Pet>(`/api/pets/${targetPetId}`);
-           setPet(petData);
- 
-           const honorific = petData.gender === "female" ? "ちゃん" : "くん";
-           setMessages([
+        const profile = await apiFetch<Profile>("/api/profiles/me");
+
+        if (profile.pet_id) {
+          const savedPetId = localStorage.getItem("selectedPetId");
+          const targetPetId = savedPetId ?? profile.pet_id;
+
+          const petData = await apiFetch<Pet>(`/api/pets/${targetPetId}`);
+          setPet(petData);
+
+          const honorific = petData.gender === "female" ? "ちゃん" : "くん";
+          setMessages([
             {
               role: "ai",
               content: `こんにちは！${petData.name}${honorific}のことで気になることがあれば何でも聞いてください🐾`,
@@ -77,37 +80,42 @@ export default function AiChatPage() {
         ]);
       }
     };
- 
+
     fetchInitialData();
   }, []);
- 
+
+  // ★メッセージが増えるたびに一番下までスクロールする
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isSending]);
+
   const isSubmitDisabled =
     input.trim() === "" || input.length > 500 || isSending;
- 
+
   const handleSubmit = async () => {
     if (isSubmitDisabled) return;
- 
+
     // 無料会員で上限に達した場合
     if (!isPremium && remainingCount !== null && remainingCount <= 0) {
       setIsPremiumModalOpen(true);
       return;
     }
- 
+
     const messageText = input;
- 
+
     // ユーザーメッセージを追加
     const userMessage: Message = { role: "user", content: messageText };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setSendError(null);
     setIsSending(true);
- 
+
     try {
       const response = await apiFetch<AiChatResponse>("/api/ai/chat", {
         method: "POST",
         body: JSON.stringify({ message: messageText, pet_id: pet?.id }),
       });
- 
+
       const aiMessage: Message = { role: "ai", content: response.reply };
       setMessages((prev) => [...prev, aiMessage]);
       setRemainingCount(response.remaining_count);
@@ -120,7 +128,7 @@ export default function AiChatPage() {
         setSendError(
           err instanceof ApiError
             ? err.message
-            : "通信エラーが発生しました。時間をおいて再度お試しください。"
+            : "通信エラーが発生しました。時間をおいて再度お試しください。",
         );
         setMessages((prev) => prev.slice(0, -1));
       }
@@ -128,11 +136,11 @@ export default function AiChatPage() {
       setIsSending(false);
     }
   };
- 
+
   return (
-    <div className="min-h-screen bg-[#FFF9F5] flex flex-col pb-16">
+    <div className="mx-auto flex h-screen w-full max-w-[430px] flex-col bg-[#FFF9F5] pb-16">
       <Header title="獣医師AI相談" />
- 
+
       {/* 残り回数バッジ */}
       <div className="px-4 pt-3">
         {isPremium ? (
@@ -149,9 +157,9 @@ export default function AiChatPage() {
           </div>
         )}
       </div>
- 
-      {/* メッセージ一覧 */}
-      <div className="flex-1 p-4 flex flex-col gap-3">
+
+      {/* メッセージ一覧（★スクロール領域） */}
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
         {messages.map((message, index) => (
           <div
             key={index}
@@ -186,10 +194,12 @@ export default function AiChatPage() {
         {sendError && (
           <p className="text-xs text-red-500 text-center mt-2">{sendError}</p>
         )}
+        {/* ★スクロール先の目印。中身は空でOK */}
+        <div ref={bottomRef} />
       </div>
- 
-      {/* 入力エリア */}
-      <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-[#e0d6ce] px-4 py-3">
+
+      {/* 入力エリア（★fixedをやめて通常配置に変更） */}
+      <div className="flex-shrink-0 bg-white border-t border-[#e0d6ce] px-4 py-3">
         <div className="flex items-end gap-2">
           <textarea
             placeholder="気になることを入力..."
@@ -212,7 +222,7 @@ export default function AiChatPage() {
           {input.length} / 500
         </p>
       </div>
- 
+
       {/* プレミアム誘導モーダル */}
       <Modal
         open={isPremiumModalOpen}
@@ -238,11 +248,10 @@ export default function AiChatPage() {
           </div>
         }
       />
- 
-      <div className="fixed bottom-0 left-0 right-0">
+
+      <div className="fixed bottom-0 left-0 right-0 mx-auto w-full max-w-[430px]">
         <BottomNavigation />
       </div>
     </div>
   );
 }
- 
