@@ -103,7 +103,6 @@ export default function LoginPage() {
         {/* フォーム */}
         <form
           noValidate
-          // eslint-disable-next-line react-hooks/refs
           onSubmit={handleSubmit(onSubmit)}
           className="mt-8 flex flex-col gap-4"
         >

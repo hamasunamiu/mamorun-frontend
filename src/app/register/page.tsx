@@ -1,6 +1,4 @@
 "use client";
-import { Suspense } from "react";
-
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Plus, UserPlus } from "lucide-react";
@@ -121,7 +119,6 @@ function RegisterPageContent() {
 
         <form
           noValidate
-          // eslint-disable-next-line react-hooks/refs -- handleSubmitはイベントハンドラを返すだけで、render中にonSubmit内のref.currentを読むことはないため誤検知
           onSubmit={handleSubmit(onSubmit)}
           className="mt-6 flex flex-col gap-6"
         >
