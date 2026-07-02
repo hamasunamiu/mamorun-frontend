@@ -113,7 +113,6 @@ export function useCareHomeData() {
           filter: `pet_id=eq.${pet.id}`,
         },
         (payload) => {
-          console.log("[Realtime] Todo更新受信:", payload);
           if (payload.eventType === "INSERT") {
             const newTodo = payload.new as Todo;
             setTodos((prevTodos) => {
@@ -145,9 +144,7 @@ export function useCareHomeData() {
           }
         },
       )
-      .subscribe((status) => {
-        console.log("[Realtime] Subscription status:", status);
-      });
+      .subscribe();
 
     // ★重要：コンポーネントが画面から消える時（クリーンアップ時）に、
     // 必ずチャンネルの登録を解除する。これを忘れると、画面を何度も開閉した際に
@@ -176,7 +173,6 @@ export function useCareHomeData() {
           filter: `pet_id=eq.${pet.id}`,
         },
         (payload) => {
-          console.log("[Realtime] Schedule更新受信:", payload);
           if (payload.eventType === "INSERT") {
             const newSchedule = payload.new as Schedule;
             setSchedules((prevSchedules) => {
@@ -200,9 +196,7 @@ export function useCareHomeData() {
           }
         },
       )
-      .subscribe((status) => {
-        console.log("[Realtime] Schedule Subscription status:", status);
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
