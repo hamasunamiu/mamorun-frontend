@@ -37,10 +37,10 @@ export function TodoCard({
           role="checkbox"
           aria-checked={isCompleted}
           aria-label={`${taskName}を${isCompleted ? "未完了" : "完了"}にする`}
-          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 ${
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 transition-colors ${
             isCompleted
-              ? "border-primary bg-primary"
-              : "border-accent-foreground/30 bg-white"
+              ? "border-primary bg-primary hover:bg-primary/80"
+              : "border-accent-foreground/30 bg-white hover:border-primary hover:bg-accent"
           }`}
         >
           {/* ★色だけで状態を表現しない：チェックマークを併用 */}
