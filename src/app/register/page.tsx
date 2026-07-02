@@ -16,6 +16,7 @@ import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { Modal } from "@/components/common/Modal";
 import { supabase } from "@/lib/supabase";
 import { apiFetch, ApiError } from "@/lib/api-client";
+import { Suspense } from "react";
 
 const INVITE_ERROR_MESSAGES: Record<
   string,
@@ -91,7 +92,7 @@ const EMPTY_PET = {
   illness: "",
 } as unknown as RegisterFormValues["pets"][number];
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("token");
@@ -122,6 +123,7 @@ export default function RegisterPage() {
       password: "",
       pets: inviteToken ? [] : [EMPTY_PET],
     },
+
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -416,5 +418,13 @@ export default function RegisterPage() {
         }
       />
     </main>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <RegisterPageContent />
+    </Suspense>
   );
 }

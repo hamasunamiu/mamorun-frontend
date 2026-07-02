@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { Header } from "@/components/common/Header";
 import { BottomNavigation } from "@/components/common/BottomNavigation";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
@@ -26,7 +26,7 @@ type Pet = {
   illness?: string;
 };
  
-export default function SettingsPage() {
+function SettingsPageContent() {
   const [notificationTime, setNotificationTime] = useState<"morning" | "night">("morning");
   const [isPremium, setIsPremium] = useState(false);
   const [isUpgrading, setIsUpgrading] = useState(false);
@@ -527,3 +527,11 @@ export default function SettingsPage() {
   );
 }
  
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div>読み込み中...</div>}>
+      <SettingsPageContent />
+    </Suspense>
+  );
+}
