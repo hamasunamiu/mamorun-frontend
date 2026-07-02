@@ -7,6 +7,7 @@ import { Modal } from "@/components/common/Modal";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import type { Pet, Profile } from "@/types";
 import { Stethoscope, Crown, SendHorizontal } from "lucide-react";
+import { getSelectedPetId } from "@/lib/petStorage";
 
 type Message = {
   role: "ai" | "user";
@@ -50,7 +51,7 @@ export default function AiChatPage() {
         const profile = await apiFetch<Profile>("/api/profiles/me");
 
         if (profile.pet_id) {
-          const savedPetId = localStorage.getItem("selectedPetId");
+          const savedPetId = getSelectedPetId();
           const targetPetId = savedPetId ?? profile.pet_id;
 
           const petData = await apiFetch<Pet>(`/api/pets/${targetPetId}`);
@@ -114,7 +115,7 @@ export default function AiChatPage() {
     try {
       const response = await apiFetch<AiChatResponse>("/api/ai/chat", {
         method: "POST",
-        body: JSON.stringify({ message: messageText, pet_id: pet?.id }),
+        body: JSON.stringify({ message: messageText }),
       });
 
       const aiMessage: Message = { role: "ai", content: response.reply };
@@ -139,7 +140,7 @@ export default function AiChatPage() {
   };
 
   return (
-    <div className="mx-auto flex h-screen w-full max-w-[430px] flex-col bg-[#FFF9F5] pb-16">
+    <div className="mx-auto flex h-dvh w-full max-w-[430px] flex-col bg-[#FFF9F5] pb-16">
       <Header title="獣医師AI相談" />
 
       {/* 残り回数バッジ */}
@@ -154,8 +155,9 @@ export default function AiChatPage() {
         ) : (
           <div className="flex justify-end">
             <span
-              data-testid="ui004-remaining-count" 
-              className="bg-[#f0ece8] border border-[#e0d6ce] text-[#888780] text-xs font-medium px-3 py-1 rounded-full">
+              data-testid="ui004-remaining-count"
+              className="bg-[#f0ece8] border border-[#e0d6ce] text-[#888780] text-xs font-medium px-3 py-1 rounded-full"
+            >
               本日の残り相談回数：{remainingCount ?? 0} / 3回
             </span>
           </div>
