@@ -2,18 +2,17 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { Plus, UserPlus } from "lucide-react";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Trash2 } from "lucide-react";
 import { InputField } from "@/components/common/InputField";
-import { TextAreaField } from "@/components/common/TextAreaField";
-import { ToggleOptionGroup } from "@/components/common/ToggleOptionGroup";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { Modal } from "@/components/common/Modal";
 import { useRegisterSubmit } from "./_components/useRegisterSubmit";
+import { PetFormSection } from "./_components/PetFormSection";
 
 const petSchema = z.object({
   species: z.enum(["dog", "cat"], { message: "犬または猫を選択してください" }),
@@ -103,10 +102,16 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#FAF8F6] px-6 py-8">
-      <div className="mx-auto max-w-md">
+    <main className="min-h-screen bg-[#FAF8F6]">
+      <div
+        className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col px-6 py-8"
+        style={{
+          paddingTop: "calc(env(safe-area-inset-top) + 2rem)",
+          paddingBottom: "calc(env(safe-area-inset-bottom) + 2rem)",
+        }}
+      >
         <h1 className="text-xl font-bold text-[#5C4631]">アカウント登録</h1>
-        <p className="mt-1 text-sm text-[#9E7654]">
+        <p className="mt-1 text-sm text-[#8a6d54] font-bold">
           {inviteToken
             ? "招待された家族として参加しましょう"
             : "ペット情報もあわせて登録しましょう"}
@@ -120,7 +125,8 @@ export default function RegisterPage() {
         >
           {/* アカウント情報 */}
           <section className="flex flex-col gap-3 rounded-2xl bg-white p-4">
-            <h2 className="text-sm font-semibold text-[#6E5849]">
+            <h2 className="flex items-center gap-1.5 text-lg font-semibold text-[#6E5849]">
+              <UserPlus className="h-5 w-5" aria-hidden="true" />
               アカウント情報
             </h2>
             <InputField
@@ -128,6 +134,7 @@ export default function RegisterPage() {
               required
               data-testid="ui001a-displayname-input"
               placeholder="例：花子"
+              className="border-[#a8825f] placeholder:text-[#8a6d54]"
               {...register("displayName")}
               error={errors.displayName?.message}
             />
@@ -137,6 +144,7 @@ export default function RegisterPage() {
               data-testid="ui001a-email-input"
               type="email"
               placeholder="example@email.com"
+              className="border-[#a8825f] placeholder:text-[#8a6d54]"
               {...register("email")}
               error={errors.email?.message}
             />
@@ -146,6 +154,7 @@ export default function RegisterPage() {
               type="password"
               data-testid="ui001a-password-input"
               placeholder="8文字以上"
+              className="border-[#a8825f] placeholder:text-[#8a6d54]"
               {...register("password")}
               error={errors.password?.message}
             />
@@ -155,98 +164,25 @@ export default function RegisterPage() {
           {!inviteToken && (
             <>
               {fields.map((field, index) => (
-                <section
+                <PetFormSection
                   key={field.id}
-                  data-testid={`ui001a-pet-form-${index}`}
-                  className="flex flex-col gap-3 rounded-2xl bg-white p-4"
-                >
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-[#6E5849]">
-                      ペット情報（{index + 1}匹目）
-                    </h2>
-                    {fields.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => remove(index)}
-                        aria-label="このペットを削除"
-                        className="text-muted-foreground"
-                      >
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
-                      </button>
-                    )}
-                  </div>
-
-                  <Controller
-                    control={control}
-                    name={`pets.${index}.species`}
-                    render={({ field: f }) => (
-                      <ToggleOptionGroup
-                        label="種類"
-                        required
-                        value={f.value}
-                        onChange={f.onChange}
-                        options={[
-                          { value: "dog", label: "犬", icon: "🐶" },
-                          { value: "cat", label: "猫", icon: "🐱" },
-                        ]}
-                        error={errors.pets?.[index]?.species?.message}
-                      />
-                    )}
-                  />
-
-                  <InputField
-                    label="名前"
-                    required
-                    data-testid="name-input"
-                    placeholder="例：むぎ"
-                    {...register(`pets.${index}.name`)}
-                    error={errors.pets?.[index]?.name?.message}
-                  />
-
-                  <Controller
-                    control={control}
-                    name={`pets.${index}.gender`}
-                    render={({ field: f }) => (
-                      <ToggleOptionGroup
-                        label="性別"
-                        required
-                        value={f.value}
-                        onChange={f.onChange}
-                        options={[
-                          { value: "male", label: "おとこのこ" },
-                          { value: "female", label: "おんなのこ" },
-                        ]}
-                        error={errors.pets?.[index]?.gender?.message}
-                      />
-                    )}
-                  />
-
-                  <InputField
-                    label="生年月日"
-                    required
-                    type="date"
-                    data-testid="birthday-input"
-                    {...register(`pets.${index}.birthday`)}
-                    error={errors.pets?.[index]?.birthday?.message}
-                  />
-
-                  <TextAreaField
-                    label="持病・特記事項"
-                    placeholder="例：アレルギーあり"
-                    {...register(`pets.${index}.illness`)}
-                    error={errors.pets?.[index]?.illness?.message}
-                  />
-                </section>
+                  index={index}
+                  control={control}
+                  register={register}
+                  errors={errors}
+                  canRemove={fields.length > 1}
+                  onRemove={() => remove(index)}
+                />
               ))}
 
               <button
                 type="button"
                 data-testid="ui001a-add-pet-button"
                 onClick={() => append(EMPTY_PET)}
-                className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2.5 text-sm text-muted-foreground"
+                className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-dashed border-[#a8825f] py-2.5 text-sm text-[#8a6d54]"
               >
                 <Plus className="h-4 w-4" aria-hidden="true" />
-                ＋ペットを追加する
+                ペットを追加する
               </button>
             </>
           )}
@@ -258,7 +194,7 @@ export default function RegisterPage() {
               {isEmailDuplicateError && (
                 <Link
                   href="/login"
-                  className="text-sm font-medium text-[#9E7654] underline underline-offset-2"
+                  className="text-sm font-medium text-[#8a6d54] underline underline-offset-2"
                 >
                   ログイン画面へ
                 </Link>
@@ -271,7 +207,7 @@ export default function RegisterPage() {
             showPaw
             data-testid="ui001a-submit-button"
             disabled={isSubmitting}
-            className="h-14 rounded-3xl bg-[#C69A6B] text-base hover:bg-[#C69A6B] hover:opacity-85"
+            className="h-14 rounded-3xl bg-primary text-base hover:bg-primary hover:opacity-85"
           >
             {isSubmitting ? <LoadingSpinner size="sm" /> : "登録する"}
           </PrimaryButton>
@@ -294,7 +230,7 @@ export default function RegisterPage() {
           <PrimaryButton
             type="button"
             onClick={() => router.push("/login")}
-            className="rounded-3xl bg-[#C69A6B] hover:bg-[#C69A6B] hover:opacity-85"
+            className="rounded-3xl bg-primary hover:bg-primary hover:opacity-85"
           >
             ログイン画面へ
           </PrimaryButton>

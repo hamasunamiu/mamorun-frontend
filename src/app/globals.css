@@ -127,4 +127,10 @@
   html {
     @apply font-sans;
   }
+  input.register-date-input::-webkit-datetime-edit-text,
+  input.register-date-input::-webkit-datetime-edit-month-field,
+  input.register-date-input::-webkit-datetime-edit-day-field,
+  input.register-date-input::-webkit-datetime-edit-year-field {
+    color: #8a6d54;
+  }
 }
