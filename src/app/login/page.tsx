@@ -1,10 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Modal } from "@/components/common/Modal";
 import { Yomogi } from "next/font/google";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,13 +14,12 @@ import {
   Lock,
   Link as LinkIcon,
   ShieldCheck,
-  PawPrint,
 } from "lucide-react";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
-import { supabase } from "@/lib/supabase";
-import { apiFetch, ApiError } from "@/lib/api-client";
+import { useLoginSubmit } from "./_components/useLoginSubmit";
+import { InviteUrlModal } from "./_components/InviteUrlModal";
 
 const yomogi = Yomogi({
   weight: "400",
@@ -44,13 +41,9 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  // レンダリングを待たずに即座に参照できる二重送信防止用ガード
-  const isSubmittingRef = useRef(false);
+  const { onSubmit, authError, isSubmitting } = useLoginSubmit();
 
   const {
     register,
@@ -60,59 +53,10 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = async (values: LoginFormValues) => {
-    // 連続クリック・連続Enterによる二重送信を防止
-    if (isSubmittingRef.current) return;
-    isSubmittingRef.current = true;
-
-    setAuthError(null);
-    setIsSubmitting(true);
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email: values.email,
-      password: values.password,
-    });
-
-    if (error) {
-      setAuthError("メールアドレスまたはパスワードが正しくありません");
-      setIsSubmitting(false);
-      isSubmittingRef.current = false;
-      return;
-    }
-
-    // ログイン成功直後、JIT同期APIを1度だけ呼び出す（バックエンド要求②準拠）
-    try {
-      await apiFetch("/api/auth/sync", { method: "POST" });
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setAuthError(err.message);
-      } else {
-        setAuthError(
-          "通信エラーが発生しました。時間をおいて再度お試しください。",
-        );
-      }
-      setIsSubmitting(false);
-      isSubmittingRef.current = false;
-      return;
-    }
-
-    //管理者かどうかを判定
-    try {
-      await apiFetch("/api/admin/stats");
-      router.push("/admin");
-      return;
-    } catch {
-      //管理者でない場合（４０４）は通常フローへ
-    }
-
-    router.push("/home");
-    // 成功時はページ遷移するため isSubmittingRef のリセットは不要
-  };
-
   return (
-    <main className="min-h-screen bg-[#FAF8F6]">
+    <main className="min-h-dvh bg-[#FAF8F6]">
       <div
-        className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col px-6 py-8"
+        className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col px-6 py-8"
         style={{
           paddingTop: "calc(env(safe-area-inset-top) + 2rem)",
           paddingBottom: "calc(env(safe-area-inset-bottom) + 2rem)",
@@ -133,13 +77,25 @@ export default function LoginPage() {
         {/* アプリ名 */}
         <div className="mt-4 text-center">
           <div className="flex items-center justify-center gap-2">
-            <span className="text-2xl text-accent-foreground">🐾</span>
+            <span
+              className="text-2xl text-accent-foreground"
+              aria-hidden="true"
+            >
+              🐾
+            </span>
             <h1 className={`${yomogi.className} text-3xl text-foreground`}>
               まもるん
             </h1>
-            <span className="text-2xl text-accent-foreground">🐾</span>
+            <span
+              className="text-2xl text-accent-foreground"
+              aria-hidden="true"
+            >
+              🐾
+            </span>
           </div>
-          <p className="mt-1 text-sm text-accent-foreground">
+          <p
+            className={`${yomogi.className} mt-1 text-sm text-accent-foreground font-bold`}
+          >
             〜 大切な家族を、みんなで見守る 〜
           </p>
         </div>
@@ -169,11 +125,13 @@ export default function LoginPage() {
                 data-testid="ui001-email-input"
                 type="email"
                 placeholder="メールアドレスを入力してください"
-                className="h-12 w-full rounded-xl border border-accent-foreground/30 bg-white pl-10 pr-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-invalid={errors.email ? "true" : "false"}
+                aria-describedby={errors.email ? "email-error" : undefined}
+                className="h-12 w-full rounded-xl border border-[#D8C0A8] bg-white pl-10 pr-3 text-sm placeholder:text-[#C9B6A3] focus:outline-none focus:ring-2 focus:ring-[#C69A6B]"
               />
             </div>
             {errors.email && (
-              <p className="mt-1 text-xs text-destructive">
+              <p id="email-error" className="mt-1 text-xs text-destructive">
                 {errors.email.message}
               </p>
             )}
@@ -197,7 +155,11 @@ export default function LoginPage() {
                 data-testid="ui001-password-input"
                 type={showPassword ? "text" : "password"}
                 placeholder="パスワードを入力してください"
-                className="h-12 w-full rounded-xl border border-accent-foreground/30 bg-white pl-10 pr-10 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                aria-invalid={errors.password ? "true" : "false"}
+                aria-describedby={
+                  errors.password ? "password-error" : undefined
+                }
+                className="h-12 w-full rounded-xl border border-[#D8C0A8] bg-white pl-10 pr-10 text-sm placeholder:text-[#C9B6A3] focus:outline-none focus:ring-2 focus:ring-[#C69A6B]"
               />
               <button
                 type="button"
@@ -205,7 +167,7 @@ export default function LoginPage() {
                 aria-label={
                   showPassword ? "パスワードを隠す" : "パスワードを表示する"
                 }
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-accent-foreground"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-accent-foreground"
               >
                 {showPassword ? (
                   <EyeOff className="h-4 w-4" aria-hidden="true" />
@@ -215,7 +177,7 @@ export default function LoginPage() {
               </button>
             </div>
             {errors.password && (
-              <p className="mt-1 text-xs text-destructive">
+              <p id="password-error" className="mt-1 text-xs text-destructive">
                 {errors.password.message}
               </p>
             )}
@@ -235,12 +197,9 @@ export default function LoginPage() {
         </form>
 
         {/* 新規登録 */}
-        <p className="mt-6 text-center text-sm text-accent-foreground">
+        <p className="mt-6 text-center text-sm text-accent-foreground font-bold">
           アカウントをお持ちでない方は{" "}
-          <Link
-            href="/register"
-            className="font-semibold text-primary-foreground underline"
-          >
+          <Link href="/register" className="font-bold text-[#8B6647] underline">
             新規登録
           </Link>
         </p>
@@ -248,7 +207,9 @@ export default function LoginPage() {
         {/* 区切り */}
         <div className="my-6 flex items-center gap-4">
           <div className="h-px flex-1 bg-accent-foreground/30" />
-          <span className="text-sm text-accent-foreground">または</span>
+          <span className="text-sm text-accent-foreground font-bold">
+            または
+          </span>
           <div className="h-px flex-1 bg-accent-foreground/30" />
         </div>
 
@@ -256,7 +217,8 @@ export default function LoginPage() {
         <button
           type="button"
           onClick={() => setIsInviteModalOpen(true)}
-          className="flex h-14 w-full items-center justify-center gap-2 rounded-3xl border border-accent-foreground/30 bg-white text-sm font-semibold text-accent-foreground"
+          aria-haspopup="dialog"
+          className="flex h-14 w-full items-center justify-center gap-2 rounded-3xl border border-[#D8C0A8] bg-white text-sm font-semibold text-accent-foreground"
         >
           <LinkIcon className="h-4 w-4" aria-hidden="true" />
           招待URLをお持ちの方
@@ -270,11 +232,14 @@ export default function LoginPage() {
               aria-hidden="true"
             />
             <div className="pr-12">
-              <p className="text-sm font-semibold text-foreground">
+              <p className="text-sm font-semibold text-accent-foreground">
                 安心・安全のために
               </p>
               <p className="mt-1 text-xs leading-relaxed text-accent-foreground">
-                お世話の情報を家族で共有し、もしもの時もすぐに連絡できる安心のアプリです。
+                お世話の情報を家族で共有し、もしもの時も
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-accent-foreground">
+                すぐに連絡できる安心のアプリです。
               </p>
             </div>
           </div>
@@ -283,43 +248,15 @@ export default function LoginPage() {
             alt=""
             width={70}
             height={58}
-            className="absolute bottom-2 right-2 h-12 w-14"
+            className="absolute bottom-3 right-3 h-14 w-16"
           />
         </div>
       </div>
 
-      <Modal
+      <InviteUrlModal
         open={isInviteModalOpen}
         onOpenChange={setIsInviteModalOpen}
-        title="招待URLをお持ちの方"
-        footer={
-          <PrimaryButton
-            className="w-full"
-            onClick={() => setIsInviteModalOpen(false)}
-          >
-            閉じる
-          </PrimaryButton>
-        }
-      >
-        <div className="flex flex-col items-center gap-3 py-2">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-accent">
-            <PawPrint
-              className="h-7 w-7 text-accent-foreground"
-              aria-hidden="true"
-            />
-          </div>
-          <p className="text-center text-sm leading-relaxed text-accent-foreground">
-            家族から届いた招待URLをタップすると
-            <br />
-            専用の登録画面にご案内します。
-            <br />
-            <br />
-            このボタンからは登録できないので
-            <br />
-            届いたURLからアクセスしてくださいね！
-          </p>
-        </div>
-      </Modal>
+      />
     </main>
   );
 }
