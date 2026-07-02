@@ -15,6 +15,7 @@ export const MOCK_PROFILE: Profile = {
   stripe_customer_id: null,
   pet_id: "mock-pet-id",
   notification_time: "morning",
+  display_name: "テストユーザー",
   created_at: "2026-06-01T00:00:00.000Z",
 };
 
@@ -58,6 +59,7 @@ export const MOCK_TODOS: Todo[] = [
     task_name: "朝ごはん　7時",
     is_completed: true,
     completed_by_id: "mock-profile-id",
+    completed_by: { display_name: "テストユーザー" },
     completed_at: "2026-06-24T07:00:00.000Z",
     todo_date: "2026-06-24",
     created_at: "2026-06-24T07:00:00.000Z",
@@ -68,6 +70,7 @@ export const MOCK_TODOS: Todo[] = [
     task_name: "お散歩　8時半",
     is_completed: false,
     completed_by_id: null,
+    completed_by: null,
     completed_at: null,
     todo_date: "2026-06-24",
     created_at: "2026-06-24T07:00:00.000Z",
@@ -78,6 +81,7 @@ export const MOCK_TODOS: Todo[] = [
     task_name: "目薬（お散歩の後）",
     is_completed: false,
     completed_by_id: null,
+    completed_by: null,
     completed_at: null,
     todo_date: "2026-06-24",
     created_at: "2026-06-24T07:00:00.000Z",
