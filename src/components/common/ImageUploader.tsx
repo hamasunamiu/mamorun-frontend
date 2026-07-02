@@ -26,7 +26,7 @@ export function ImageUploader({
   initialImageUrl,
 }: ImageUploaderProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(
-    initialImageUrl ?? null
+    initialImageUrl ?? null,
   );
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -48,7 +48,7 @@ export function ImageUploader({
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
     }
-    
+
     setError(null);
     setPreviewUrl(URL.createObjectURL(file));
     onFileSelect(file);
@@ -85,12 +85,12 @@ export function ImageUploader({
       </label>
 
       {previewUrl ? (
-        <div className="relative w-full overflow-hidden rounded-md border border-border">
+        <div className="relative aspect-[3/2] w-full overflow-hidden rounded-md border border-border">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={previewUrl}
             alt={`${label}のプレビュー`}
-            className="h-72 w-full object-cover"
+            className="h-full w-full object-cover"
           />
           <button
             type="button"
@@ -104,10 +104,13 @@ export function ImageUploader({
       ) : (
         <label
           className={cn(
-            "flex min-h-[88px] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-border bg-muted/30 px-4 py-4 text-center"
+            "flex aspect-[3/2] w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-border bg-muted/30 px-4 py-4 text-center",
           )}
         >
-          <ImagePlus className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
+          <ImagePlus
+            className="h-6 w-6 text-muted-foreground"
+            aria-hidden="true"
+          />
           <span className="text-xs text-muted-foreground">
             タップして画像を追加
           </span>

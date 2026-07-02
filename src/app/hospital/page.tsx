@@ -215,7 +215,7 @@ export default function HospitalPage() {
 
   if (isLoading) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-md items-center justify-center bg-[#FFF9F5]">
+      <main className="mx-auto flex h-dvh w-full max-w-[430px] items-center justify-center bg-[#FAF8F6]">
         <LoadingSpinner size="lg" />
       </main>
     );
@@ -223,7 +223,7 @@ export default function HospitalPage() {
 
   if (loadError) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-md items-center justify-center bg-[#FFF9F5] px-6">
+      <main className="mx-auto flex h-dvh w-full max-w-[430px] items-center justify-center bg-[#FAF8F6] px-6">
         <ErrorMessage message={loadError} />
       </main>
     );
@@ -234,13 +234,13 @@ export default function HospitalPage() {
   // ------------------------------------------------------------
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-[#FFF9F5] pb-20">
+    <div className="mx-auto flex h-dvh w-full max-w-[430px] flex-col overflow-hidden bg-[#FAF8F6]">
       {/* ★画面最上部の緊急発信ボタン（FR-004準拠・UI-002と同じrightSlotパターンで設置）
           病院電話番号が未登録の場合はボタン自体を出さない */}
       <Header
         petName={pet?.name}
         petSpecies={pet?.species}
-        suffix="の病院情報"
+        suffix="の病院"
         onPetSwitch={() => {
           if (petList.length > 1) {
             setIsPetSwitchModalOpen(true);
@@ -248,29 +248,34 @@ export default function HospitalPage() {
         }}
         rightSlot={
           pet?.hospital_phone ? (
-            <EmergencyCallButton 
+            <EmergencyCallButton
               phoneNumber={pet.hospital_phone}
               testId="ui007-emergency-call-button"
-             />
+            />
           ) : undefined
         }
       />
 
-      {isEditing ? (
-        <HospitalEditView
-          pet={pet}
-          onSubmit={handleSubmit(onSubmit)}
-          register={register}
-          errors={errors}
-          onHospitalCardSelect={setHospitalCardFile}
-          onInsuranceCardSelect={setInsuranceCardFile}
-          saveError={saveError}
-          isSubmitting={isSubmitting}
-          onCancel={handleCancelEdit}
-        />
-      ) : (
-        <HospitalDisplayView pet={pet} onEditClick={() => setIsEditing(true)} />
-      )}
+      <main className="flex-1 overflow-y-auto">
+        {isEditing ? (
+          <HospitalEditView
+            pet={pet}
+            onSubmit={handleSubmit(onSubmit)}
+            register={register}
+            errors={errors}
+            onHospitalCardSelect={setHospitalCardFile}
+            onInsuranceCardSelect={setInsuranceCardFile}
+            saveError={saveError}
+            isSubmitting={isSubmitting}
+            onCancel={handleCancelEdit}
+          />
+        ) : (
+          <HospitalDisplayView
+            pet={pet}
+            onEditClick={() => setIsEditing(true)}
+          />
+        )}
+      </main>
 
       {/* ペット切り替え用のModal（2匹以上の場合に表示）
           切り替え時、選んだペットの病院情報をフォームへ反映する */}
@@ -282,9 +287,8 @@ export default function HospitalPage() {
         onSwitch={handleSwitchPet}
       />
 
-      <div className="fixed bottom-0 left-0 right-0 mx-auto w-full max-w-md">
-        <BottomNavigation />
-      </div>
+      {/* 画面下部の共通ナビゲーション */}
+      <BottomNavigation />
     </div>
   );
 }

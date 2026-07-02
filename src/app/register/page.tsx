@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Plus, UserPlus } from "lucide-react";
+import { Suspense } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -87,7 +88,6 @@ function RegisterPageContent() {
       password: "",
       pets: inviteToken ? [] : [EMPTY_PET],
     },
-
   });
 
   const { fields, append, remove } = useFieldArray({
