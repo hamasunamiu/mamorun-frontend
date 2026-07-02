@@ -1,26 +1,22 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import type { ReactNode } from "react";
 
 type Option = {
   value: string;
   label: string;
-  icon?: string;
+  icon?: ReactNode;
 };
 
 type ToggleOptionGroupProps = {
-  /** ラベル */
   label: string;
-  /** 必須項目かどうか（ラベル横に「必須」バッジを表示） */
   required?: boolean;
-  /** 選択肢一覧 */
   options: Option[];
-  /** 現在選択されている値 */
   value: string | undefined;
-  /** 選択変更時のコールバック */
   onChange: (value: string) => void;
-  /** バリデーションエラーメッセージ */
   error?: string;
+  unselectedClassName?: string;
 };
 
 export function ToggleOptionGroup({
@@ -30,6 +26,7 @@ export function ToggleOptionGroup({
   value,
   onChange,
   error,
+  unselectedClassName,
 }: ToggleOptionGroupProps) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -52,13 +49,14 @@ export function ToggleOptionGroup({
               onClick={() => onChange(option.value)}
               aria-pressed={isSelected}
               className={cn(
-                "min-h-11 flex-1 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors",
+                "flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors",
                 isSelected
                   ? "border-[#C4956A] bg-[#FBE9DD] text-[#993C1D]"
-                  : "border-border bg-background text-muted-foreground"
+                  : (unselectedClassName ??
+                      "border-border bg-background text-muted-foreground"),
               )}
             >
-              {option.icon && <span className="mr-1.5">{option.icon}</span>}
+              {option.icon}
               {option.label}
             </button>
           );

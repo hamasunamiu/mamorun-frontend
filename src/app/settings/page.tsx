@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import {
   User,
   PawPrint,
@@ -37,7 +37,7 @@ type Pet = {
   illness?: string;
 };
 
-export default function SettingsPage() {
+function SettingsPageContent() {
   const [notificationTime, setNotificationTime] = useState<"morning" | "night">(
     "morning",
   );
@@ -551,5 +551,13 @@ export default function SettingsPage() {
         <BottomNavigation />
       </div>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div>読み込み中...</div>}>
+      <SettingsPageContent />
+    </Suspense>
   );
 }
