@@ -39,6 +39,7 @@ export function ScheduleFormModal({
         <InputField
           label="タイトル"
           required
+          data-testid="schedule-title-input"
           placeholder="例：フィラリア薬"
           {...register("title")}
           error={errors.title?.message}
@@ -53,10 +54,16 @@ export function ScheduleFormModal({
           label="予定日"
           required
           type="date"
+          data-testid="schedule-date-input"
           {...register("scheduledDate")}
           error={errors.scheduledDate?.message}
         />
-        <PrimaryButton type="submit" className="h-12 rounded-2xl">
+
+        <PrimaryButton
+          type="submit"
+          data-testid="schedule-save-button"
+          className="h-12 rounded-2xl"
+        >
           {isEditing ? "更新する" : "追加する"}
         </PrimaryButton>
       </form>

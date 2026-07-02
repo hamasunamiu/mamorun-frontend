@@ -143,7 +143,9 @@ export default function AiChatPage() {
           </div>
         ) : (
           <div className="flex justify-end">
-            <span className="bg-[#f0ece8] border border-[#e0d6ce] text-[#888780] text-xs font-medium px-3 py-1 rounded-full">
+            <span
+              data-testid="ui004-remaining-count" 
+              className="bg-[#f0ece8] border border-[#e0d6ce] text-[#888780] text-xs font-medium px-3 py-1 rounded-full">
               本日の残り相談回数：{remainingCount ?? 0} / 3回
             </span>
           </div>
@@ -192,6 +194,7 @@ export default function AiChatPage() {
       <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-[#e0d6ce] px-4 py-3">
         <div className="flex items-end gap-2">
           <textarea
+            data-testid="ui004-chat-input"
             placeholder="気になることを入力..."
             rows={2}
             value={input}
@@ -200,6 +203,7 @@ export default function AiChatPage() {
             className="flex-1 border border-[#e0d6ce] rounded-xl px-3 py-2.5 text-sm bg-[#FFF9F5] outline-none resize-none leading-relaxed disabled:opacity-60"
           />
           <PrimaryButton
+            data-testid="ui004-send-button"
             className="w-10 h-10 rounded-full bg-[#D85A30] text-white hover:bg-[#D85A30] hover:opacity-85 flex-shrink-0 disabled:opacity-40"
             aria-label="送信"
             onClick={handleSubmit}
