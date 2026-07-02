@@ -241,6 +241,7 @@ export default function RegisterPage() {
             <InputField
               label="ニックネーム"
               required
+              data-testid="ui001a-displayname-input"
               placeholder="例：花子"
               {...register("displayName")}
               error={errors.displayName?.message}
@@ -248,6 +249,7 @@ export default function RegisterPage() {
             <InputField
               label="メールアドレス"
               required
+              data-testid="ui001a-email-input"
               type="email"
               placeholder="example@email.com"
               {...register("email")}
@@ -257,6 +259,7 @@ export default function RegisterPage() {
               label="パスワード"
               required
               type="password"
+              data-testid="ui001a-password-input"
               placeholder="8文字以上"
               {...register("password")}
               error={errors.password?.message}
@@ -269,6 +272,7 @@ export default function RegisterPage() {
               {fields.map((field, index) => (
                 <section
                   key={field.id}
+                  data-testid={`ui001a-pet-form-${index}`}
                   className="flex flex-col gap-3 rounded-2xl bg-white p-4"
                 >
                   <div className="flex items-center justify-between">
@@ -308,6 +312,7 @@ export default function RegisterPage() {
                   <InputField
                     label="名前"
                     required
+                    data-testid="name-input"
                     placeholder="例：むぎ"
                     {...register(`pets.${index}.name`)}
                     error={errors.pets?.[index]?.name?.message}
@@ -335,6 +340,7 @@ export default function RegisterPage() {
                     label="生年月日"
                     required
                     type="date"
+                    data-testid="birthday-input"
                     {...register(`pets.${index}.birthday`)}
                     error={errors.pets?.[index]?.birthday?.message}
                   />
@@ -350,6 +356,7 @@ export default function RegisterPage() {
 
               <button
                 type="button"
+                data-testid="ui001a-add-pet-button"
                 onClick={() => append(EMPTY_PET)}
                 className="flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2.5 text-sm text-muted-foreground"
               >
@@ -377,6 +384,7 @@ export default function RegisterPage() {
           <PrimaryButton
             type="submit"
             showPaw
+            data-testid="ui001a-submit-button"
             disabled={isSubmitting}
             className="h-14 rounded-3xl bg-[#C69A6B] text-base hover:bg-[#C69A6B] hover:opacity-85"
           >

@@ -43,6 +43,7 @@ export function HospitalEditView({
         <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4 flex flex-col gap-3">
           <InputField
             label="病院名"
+            data-testid="hospital-name-input"
             required
             placeholder="例：〇〇動物病院"
             {...register("hospital_name")}
@@ -51,6 +52,7 @@ export function HospitalEditView({
 
           <InputField
             label="電話番号"
+            data-testid="hospital-phone-input"
             required
             type="tel"
             inputMode="numeric"
@@ -61,6 +63,7 @@ export function HospitalEditView({
 
           <InputField
             label="住所"
+            data-testid="hospital-address-input"
             required
             placeholder="例：東京都渋谷区..."
             {...register("hospital_address")}
@@ -93,6 +96,7 @@ export function HospitalEditView({
           </button>
           <PrimaryButton
             type="submit"
+            data-testid="hospital-save-button"
             disabled={isSubmitting}
             className="h-12 flex-1 bg-[#D85A30] text-white hover:bg-[#D85A30] hover:opacity-85"
           >

@@ -167,6 +167,7 @@ export default function TimelinePage() {
             <InputField
               label="タイトル"
               name="title"
+              data-testid="log-title-input"
               placeholder="例：朝の体調チェック"
               required
               value={title}
@@ -175,6 +176,7 @@ export default function TimelinePage() {
             <TextAreaField
               label="体調メモ"
               name="memo"
+              data-testid="log-memo-input"
               placeholder="例：食欲あり、元気です"
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
@@ -187,6 +189,7 @@ export default function TimelinePage() {
           </div>
           {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
           <PrimaryButton
+            data-testid="ui003-post-log-button"
             className="w-full mt-3 bg-[#D85A30] text-white hover:bg-[#D85A30] hover:opacity-85"
             onClick={handleSubmit}
             disabled={isSubmitDisabled}

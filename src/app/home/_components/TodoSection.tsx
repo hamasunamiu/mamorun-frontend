@@ -30,6 +30,7 @@ export function TodoSection({
         <PrimaryButton
           type="button"
           variant="outline"
+          data-testid="ui002-todo-add-button"
           onClick={onAddClick}
           className="min-h-11 border-2 border-accent-foreground/30 text-xs font-bold text-accent-foreground hover:bg-accent hover:text-accent-foreground"
         >
@@ -46,6 +47,7 @@ export function TodoSection({
           {todos.map((todo) => (
             <TodoCard
               key={todo.id}
+              id={todo.id}
               taskName={todo.task_name}
               isCompleted={todo.is_completed}
               completedById={todo.completed_by_id}

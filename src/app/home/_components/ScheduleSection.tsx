@@ -33,6 +33,7 @@ export function ScheduleSection({
         <PrimaryButton
           type="button"
           variant="outline"
+          data-testid="ui002-schedule-add-button"
           onClick={onAddClick}
           className="min-h-11 border-2 border-accent-foreground/30 text-xs font-bold text-accent-foreground hover:bg-accent hover:text-accent-foreground"
         >

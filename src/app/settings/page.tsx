@@ -193,10 +193,13 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between py-1.5">
             <span className="text-sm text-gray-500">プラン</span>
             {isPremium ? (
-              <span className="bg-[#FAECE7] border border-[#D85A30] text-[#993C1D] text-xs font-medium px-3 py-1 rounded-full">
-                プレミアムプラン
+              <span
+                 data-testid="ui005-premium-badge"   // ← 追加
+                 className="bg-[#FAECE7] border border-[#D85A30] text-[#993C1D] text-xs font-medium px-3 py-1 rounded-full"
+              >
+               プレミアムプラン
               </span>
-            ) : (
+             ) : (
               <span className="bg-[#f0ece8] border border-[#e0d6ce] text-[#888780] text-xs font-medium px-3 py-1 rounded-full">
                 無料プラン
               </span>
@@ -238,6 +241,7 @@ export default function SettingsPage() {
  
         {/* 家族を招待する */}
         <div
+          data-testid="ui005-invite-button"
           className="bg-white rounded-2xl border border-[#e0d6ce] p-4 cursor-pointer"
           onClick={() => setIsInviteModalOpen(true)}
         >
@@ -266,6 +270,7 @@ export default function SettingsPage() {
  
           {!isPremium && (
             <PrimaryButton
+              data-testid="ui005-premium-button"
               className="w-full bg-[#D85A30] hover:bg-[#D85A30] hover:opacity-85 mb-3"
               onClick={handleUpgrade}
               disabled={isUpgrading}
@@ -384,6 +389,7 @@ export default function SettingsPage() {
           inviteUrl ? (
             <div className="flex flex-col gap-2 w-full">
               <input
+                data-testid="ui005-invite-url-text"
                 readOnly
                 value={inviteUrl}
                 className="text-xs border border-[#e0d6ce] rounded-lg px-3 py-2 bg-[#FFF9F5]"
@@ -409,6 +415,7 @@ export default function SettingsPage() {
                   閉じる
                 </button>
                 <PrimaryButton
+                  data-testid="ui005-invite-generate-button"
                   className="flex-1 bg-[#D85A30] hover:bg-[#D85A30] hover:opacity-85"
                   onClick={handleCreateInvite}
                   disabled={isInviting}
