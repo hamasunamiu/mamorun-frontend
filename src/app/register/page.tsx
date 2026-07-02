@@ -60,7 +60,7 @@ const EMPTY_PET = {
   illness: "",
 } as unknown as RegisterFormValues["pets"][number];
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("token");
@@ -87,6 +87,7 @@ export default function RegisterPage() {
       password: "",
       pets: inviteToken ? [] : [EMPTY_PET],
     },
+
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -237,5 +238,13 @@ export default function RegisterPage() {
         }
       />
     </main>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <RegisterPageContent />
+    </Suspense>
   );
 }
