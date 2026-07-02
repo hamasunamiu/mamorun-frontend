@@ -1,8 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link"; //
+import Link from "next/link";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,12 +13,7 @@ import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { Modal } from "@/components/common/Modal";
-import { supabase } from "@/lib/supabase";
-import { apiFetch, ApiError } from "@/lib/api-client";
-import {
-  INVITE_ERROR_MESSAGES,
-  INVITE_ERROR_FALLBACK,
-} from "./inviteErrorMessages";
+import { useRegisterSubmit } from "./_components/useRegisterSubmit";
 
 const petSchema = z.object({
   species: z.enum(["dog", "cat"], { message: "犬または猫を選択してください" }),
@@ -57,7 +51,7 @@ const registerSchema = z.object({
   pets: z.array(petSchema),
 });
 
-type RegisterFormValues = z.infer<typeof registerSchema>;
+export type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const EMPTY_PET = {
   species: undefined,
@@ -72,18 +66,14 @@ export default function RegisterPage() {
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("token");
 
-  const [authError, setAuthError] = useState<string | null>(null);
-  // メールアドレス重複エラーかどうかを判定するための専用state
-  // 「エラー文言（authError）」と「ログイン誘導リンクを出すかどうか」を分けて管理することで、
-  // 通信エラーやペット登録失敗時には誤ってリンクが出ないようにする
-  const [isEmailDuplicateError, setIsEmailDuplicateError] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  // レンダリングを待たずに即座に参照できる二重送信防止用ガード
-  const isSubmittingRef = useRef(false);
-  const [inviteError, setInviteError] = useState<{
-    title: string;
-    description: string;
-  } | null>(null);
+  const {
+    authError,
+    isEmailDuplicateError,
+    isSubmitting,
+    inviteError,
+    clearInviteError,
+    submit,
+  } = useRegisterSubmit(inviteToken);
 
   const {
     register,
@@ -106,96 +96,10 @@ export default function RegisterPage() {
   });
 
   const onSubmit = async (values: RegisterFormValues) => {
-    // 連続クリック・連続Enterキーによる二重送信を防止
-    if (isSubmittingRef.current) return;
-    isSubmittingRef.current = true;
-
-    setAuthError(null);
-    setIsEmailDuplicateError(false); // 送信開始時にリセット
-    setIsSubmitting(true);
-
-    // ① Supabase Authでアカウント作成
-    const { error: signUpError } = await supabase.auth.signUp({
-      email: values.email,
-      password: values.password,
-    });
-
-    if (signUpError) {
-      const isDuplicate = signUpError.code === "user_already_exists";
-
-      setAuthError(
-        isDuplicate
-          ? "このメールアドレスはすでに登録されています。すでにアカウントをお持ちの場合はログインをお試しください。解決しない場合はお問い合わせください。"
-          : signUpError.message ||
-              "登録に失敗しました。時間をおいて再度お試しください。",
-      );
-      setIsEmailDuplicateError(isDuplicate); // メール重複時のみログイン誘導リンクを表示
-      setIsSubmitting(false);
-      isSubmittingRef.current = false;
-      return;
+    const success = await submit(values);
+    if (success) {
+      router.push("/home");
     }
-
-    // ② JIT同期APIを1度だけ呼び出す
-    try {
-      await apiFetch("/api/auth/sync", { method: "POST" });
-
-      //display_nameを更新
-      await apiFetch("/api/profiles/me", {
-        method: "PATCH",
-        body: JSON.stringify({ display_name: values.displayName }),
-      });
-    } catch (err) {
-      setAuthError(
-        err instanceof ApiError
-          ? err.message
-          : "通信エラーが発生しました。時間をおいて再度お試しください。",
-      );
-      setIsSubmitting(false);
-      isSubmittingRef.current = false;
-      return;
-    }
-
-    // ③ ペット情報を登録（招待経由の場合はスキップ：招待受諾でpet_idがセットされるため）
-    if (!inviteToken) {
-      try {
-        for (const pet of values.pets) {
-          await apiFetch("/api/pets", {
-            method: "POST",
-            body: JSON.stringify(pet),
-          });
-        }
-      } catch (err) {
-        setAuthError(
-          err instanceof ApiError
-            ? err.message
-            : "ペット情報の登録に失敗しました。時間をおいて再度お試しください。",
-        );
-        setIsSubmitting(false);
-        isSubmittingRef.current = false;
-        return;
-      }
-    }
-
-    // ④ 招待URL経由の場合、トークンをパスパラメータとして送信
-    if (inviteToken) {
-      try {
-        await apiFetch(`/api/invitations/${inviteToken}/accept`, {
-          method: "POST",
-        });
-      } catch (err) {
-        const errorContent =
-          err instanceof ApiError && INVITE_ERROR_MESSAGES[err.code]
-            ? INVITE_ERROR_MESSAGES[err.code]
-            : INVITE_ERROR_FALLBACK;
-        setInviteError(errorContent);
-        setIsSubmitting(false);
-        isSubmittingRef.current = false;
-        return;
-      }
-    }
-
-    router.push("/home");
-    // 成功時はページ遷移するため isSubmittingRef のリセットは不要
   };
 
   return (
@@ -380,7 +284,7 @@ export default function RegisterPage() {
         open={inviteError !== null}
         onOpenChange={(open) => {
           if (!open) {
-            setInviteError(null);
+            clearInviteError();
             router.push("/login");
           }
         }}
