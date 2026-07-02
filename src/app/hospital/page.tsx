@@ -248,7 +248,10 @@ export default function HospitalPage() {
         }}
         rightSlot={
           pet?.hospital_phone ? (
-            <EmergencyCallButton phoneNumber={pet.hospital_phone} />
+            <EmergencyCallButton 
+              phoneNumber={pet.hospital_phone}
+              testId="ui007-emergency-call-button"
+             />
           ) : undefined
         }
       />

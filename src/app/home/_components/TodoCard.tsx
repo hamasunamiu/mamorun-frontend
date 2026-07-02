@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
   type TodoCardProps = {
+  id: string;
   taskName: string;
   isCompleted: boolean;
   completedById: string | null;
@@ -18,6 +19,7 @@ import {
 };
 
 export function TodoCard({
+  id,
   taskName,
   isCompleted,
   completedById,
@@ -27,11 +29,15 @@ export function TodoCard({
   onEdit,
 }: TodoCardProps) {
   return (
-    <div className="flex min-h-11 items-center justify-between gap-3 rounded-2xl bg-white p-4">
+    <div
+      data-testid={`todo-item-${id}`}
+      data-completed={isCompleted ? "true" : "false"} 
+      className="flex min-h-11 items-center justify-between gap-3 rounded-2xl bg-white p-4">
       <div className="flex min-w-0 flex-1 items-center gap-3">
         {/* ★チェックボックス：タップ領域は44px以上を確保（画面設計書アクセシビリティ方針準拠） */}
         <button
           type="button"
+          data-testid={`todo-checkbox-${id}`}
           onClick={onToggle}
           role="checkbox"
           aria-checked={isCompleted}

@@ -80,7 +80,9 @@ export default function AdminPage() {
         }
       />
       <div className="p-4 flex flex-col gap-3">
-        <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
+        <div
+          data-testid="ui006-stats-card" 
+          className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 bg-[#FAECE7] rounded-xl flex items-center justify-center text-lg">
               👥

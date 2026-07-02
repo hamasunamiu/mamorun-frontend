@@ -36,12 +36,14 @@ export function TodoFormModal({
         <InputField
           label="タスク名"
           required
+          data-testid="todo-title-input"
           placeholder="例：朝ごはん　7時"
           {...register("taskName")}
           error={errors.taskName?.message}
         />
         <PrimaryButton
           type="submit"
+          data-testid="todo-save-button"
           className="h-12 rounded-2xl bg-[#C69A6B] hover:bg-[#C69A6B] hover:opacity-85"
         >
           {isEditing ? "更新する" : "追加する"}

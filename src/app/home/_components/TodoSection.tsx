@@ -26,6 +26,7 @@ export function TodoSection({
         </h2>
         <button
           type="button"
+          data-testid="ui002-todo-add-button"
           onClick={onAddClick}
           className="flex min-h-11 items-center gap-1 rounded-lg border border-[#D8C0A8] px-2.5 text-xs font-bold text-[#993C1D]"
         >
@@ -42,6 +43,7 @@ export function TodoSection({
           {todos.map((todo) => (
             <TodoCard
               key={todo.id}
+              id={todo.id}
               taskName={todo.task_name}
               isCompleted={todo.is_completed}
               completedById={todo.completed_by_id}

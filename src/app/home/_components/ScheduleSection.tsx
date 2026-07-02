@@ -29,6 +29,7 @@ export function ScheduleSection({
         </h2>
         <button
           type="button"
+          data-testid="ui002-schedule-add-button"
           onClick={onAddClick}
           className="flex min-h-11 items-center gap-1 rounded-lg border border-[#D8C0A8] px-2.5 text-xs font-bold text-[#993C1D]"
         >
