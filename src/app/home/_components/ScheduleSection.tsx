@@ -34,7 +34,7 @@ export function ScheduleSection({
           type="button"
           variant="outline"
           onClick={onAddClick}
-          className="min-h-11 border-accent-foreground/30 text-xs font-bold text-accent-foreground"
+          className="min-h-11 border-2 border-accent-foreground/30 text-xs font-bold text-accent-foreground hover:bg-accent hover:text-accent-foreground"
         >
           予定を追加
         </PrimaryButton>

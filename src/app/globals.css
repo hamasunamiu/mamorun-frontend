@@ -55,18 +55,18 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: #ee9478; /* ← 変更 */
-  --primary-foreground: #6b2a16; /* ← 変更 */
+  --primary: #c69a6b;
+  --primary-foreground: #fffbf7;
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
-  --accent: #fbe4da; /* ← 変更 */
-  --accent-foreground: #b0552c; /* ← 変更 */
+  --accent: #f5ead9;
+  --accent-foreground: #9e7654;
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: #ee9478; /* ← 変更 */
+  --ring: #c69a6b;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
