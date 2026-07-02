@@ -7,7 +7,7 @@ jest.mock("@/lib/api-client", () => {
   class ApiError extends Error {
     code;
     status;
-    constructor(code, message, status) {
+    constructor(code: string, message: string, status: number) {
       super(message);
       this.code = code;
       this.status = status;
