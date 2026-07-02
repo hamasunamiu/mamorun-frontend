@@ -73,11 +73,13 @@ export function HospitalEditView({
 
         <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4 flex flex-col gap-4">
           <ImageUploader
+            key={pet?.id}
             label="診察券"
             onFileSelect={onHospitalCardSelect}
             initialImageUrl={pet?.hospital_card_image_url ?? undefined}
           />
           <ImageUploader
+            key={pet?.id}
             label="保険証"
             onFileSelect={onInsuranceCardSelect}
             initialImageUrl={pet?.insurance_card_image_url ?? undefined}
