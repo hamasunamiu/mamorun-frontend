@@ -44,7 +44,7 @@ export function TodoFormModal({
         <PrimaryButton
           type="submit"
           data-testid="todo-save-button"
-          className="h-12 rounded-2xl bg-[#C69A6B] hover:bg-[#C69A6B] hover:opacity-85"
+          className="h-12 rounded-2xl"
         >
           {isEditing ? "更新する" : "追加する"}
         </PrimaryButton>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { supabase } from "@/lib/supabase";
+import { getSelectedPetId, clearSelectedPetId } from "@/lib/petStorage";
 import type { Profile, Pet, Todo, Schedule } from "./types";
 
 export function useCareHomeData() {
@@ -51,14 +52,14 @@ export function useCareHomeData() {
           ]);
 
         //localStorageに保存されたペットIDがあればそちらを優先
-        const savedPetId = localStorage.getItem("selectedPetId");
+        const savedPetId = getSelectedPetId();
         if (savedPetId && savedPetId !== profileData.pet_id) {
           try {
             const savedPetData = await apiFetch<Pet>(`/api/pets/${savedPetId}`);
             setPet(savedPetData);
           } catch {
             setPet(petData);
-            localStorage.removeItem("selectedPetId");
+            clearSelectedPetId();
           }
         } else {
           setPet(petData);
@@ -111,8 +112,7 @@ export function useCareHomeData() {
           table: "todos",
           filter: `pet_id=eq.${pet.id}`,
         },
-        async (payload) => {
-          console.log("[Realtime] Todo更新受信:", payload);
+        (payload) => {
           if (payload.eventType === "INSERT") {
             const newTodo = payload.new as Todo;
             setTodos((prevTodos) => {
@@ -123,16 +123,19 @@ export function useCareHomeData() {
               return [...prevTodos, newTodo];
             });
           } else if (payload.eventType === "UPDATE") {
-
-             try {
-              const latestTodos = await apiFetch<Todo[]>("/api/todos");
-              console.log("[Realtime] 再fetch結果:", latestTodos);
-              if (latestTodos) {
-                setTodos(latestTodos);
-              }
-            } catch (err) {
-              console.error("[Realtime] todos再fetch失敗:", err);
-            }
+            const updatedTodo = payload.new as Todo;
+            setTodos((prevTodos) =>
+              prevTodos.map((todo) => {
+                if (todo.id !== updatedTodo.id) return todo;
+                return {
+                  ...todo,
+                  ...updatedTodo,
+                  completed_by: updatedTodo.is_completed
+                    ? todo.completed_by
+                    : null,
+                };
+              }),
+            );
           } else if (payload.eventType === "DELETE") {
             const deletedTodo = payload.old as Todo;
             setTodos((prevTodos) =>
@@ -141,13 +144,60 @@ export function useCareHomeData() {
           }
         },
       )
-      .subscribe((status) => {
-        console.log("[Realtime] Subscription status:", status);
-      });;
+      .subscribe();
 
     // ★重要：コンポーネントが画面から消える時（クリーンアップ時）に、
     // 必ずチャンネルの登録を解除する。これを忘れると、画面を何度も開閉した際に
     // 同じイベントを複数回受け取ってしまう不具合の原因になる
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [pet?.id]);
+
+  // ------------------------------------------------------------
+  // Supabase Realtime：schedulesテーブルの変更を監視
+  // ------------------------------------------------------------
+
+  useEffect(() => {
+    // ★【最重要】Todo同様、再fetchせずpayload.new / payload.oldでstateを直接更新する
+    if (!pet?.id) return;
+
+    const channel = supabase
+      .channel(`schedules-changes-${pet.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "schedules",
+          filter: `pet_id=eq.${pet.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const newSchedule = payload.new as Schedule;
+            setSchedules((prevSchedules) => {
+              if (prevSchedules.some((s) => s.id === newSchedule.id)) {
+                return prevSchedules;
+              }
+              return [...prevSchedules, newSchedule];
+            });
+          } else if (payload.eventType === "UPDATE") {
+            const updatedSchedule = payload.new as Schedule;
+            setSchedules((prevSchedules) =>
+              prevSchedules.map((s) =>
+                s.id === updatedSchedule.id ? updatedSchedule : s,
+              ),
+            );
+          } else if (payload.eventType === "DELETE") {
+            const deletedSchedule = payload.old as Schedule;
+            setSchedules((prevSchedules) =>
+              prevSchedules.filter((s) => s.id !== deletedSchedule.id),
+            );
+          }
+        },
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
     };

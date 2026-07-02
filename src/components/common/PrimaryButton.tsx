@@ -1,3 +1,4 @@
+import { PawPrint } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ComponentProps } from "react";
 
@@ -14,7 +15,7 @@ export function PrimaryButton({
 }: PrimaryButtonProps) {
   return (
     <Button className={className} {...props}>
-      {showPaw && <span aria-hidden="true">🐾</span>}
+      {showPaw && <PawPrint className="h-4 w-4" aria-hidden="true" />}
       {children}
     </Button>
   );

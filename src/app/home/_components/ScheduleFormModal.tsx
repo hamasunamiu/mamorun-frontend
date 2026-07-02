@@ -58,10 +58,11 @@ export function ScheduleFormModal({
           {...register("scheduledDate")}
           error={errors.scheduledDate?.message}
         />
+
         <PrimaryButton
           type="submit"
           data-testid="schedule-save-button"
-          className="h-12 rounded-2xl bg-[#C69A6B] hover:bg-[#C69A6B] hover:opacity-85"
+          className="h-12 rounded-2xl"
         >
           {isEditing ? "更新する" : "追加する"}
         </PrimaryButton>

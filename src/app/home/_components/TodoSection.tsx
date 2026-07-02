@@ -1,5 +1,7 @@
 "use client";
 
+import { PrimaryButton } from "@/components/common/PrimaryButton";
+import { PawPrint } from "lucide-react";
 import { TodoCard } from "./TodoCard";
 import type { Todo } from "./types";
 
@@ -21,17 +23,19 @@ export function TodoSection({
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-md font-semibold text-[#6E5849]">
-          🐾 今日のお世話
+        <h2 className="flex items-center gap-1.5 text-lg font-semibold text-[#6E5849]">
+          <PawPrint className="h-4 w-4" aria-hidden="true" />
+          今日のお世話
         </h2>
-        <button
+        <PrimaryButton
           type="button"
+          variant="outline"
           data-testid="ui002-todo-add-button"
           onClick={onAddClick}
-          className="flex min-h-11 items-center gap-1 rounded-lg border border-[#D8C0A8] px-2.5 text-xs font-bold text-[#993C1D]"
+          className="min-h-11 border-2 border-accent-foreground/30 text-xs font-bold text-accent-foreground hover:bg-accent hover:text-accent-foreground"
         >
           お世話を追加
-        </button>
+        </PrimaryButton>
       </div>
 
       {todos.length === 0 ? (
