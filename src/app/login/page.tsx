@@ -143,6 +143,7 @@ export default function LoginPage() {
               />
               <input
                 {...register("email")}
+                data-testid="ui001-email-input"
                 type="email"
                 placeholder="メールアドレスを入力してください"
                 className="h-12 w-full rounded-xl border border-[#D8C0A8] bg-white pl-10 pr-3 text-sm placeholder:text-[#C9B6A3] focus:outline-none focus:ring-2 focus:ring-[#C69A6B]"
@@ -166,6 +167,7 @@ export default function LoginPage() {
               />
               <input
                 {...register("password")}
+                data-testid="ui001-password-input"
                 type={showPassword ? "text" : "password"}
                 placeholder="パスワードを入力してください"
                 className="h-12 w-full rounded-xl border border-[#D8C0A8] bg-white pl-10 pr-10 text-sm placeholder:text-[#C9B6A3] focus:outline-none focus:ring-2 focus:ring-[#C69A6B]"
@@ -196,6 +198,7 @@ export default function LoginPage() {
 
           <PrimaryButton
             type="submit"
+            data-testid="ui001-login-button"
             showPaw
             disabled={isSubmitting}
             className="mt-2 h-14 rounded-3xl bg-[#C69A6B] text-base hover:bg-[#C69A6B] hover:opacity-85"
@@ -209,6 +212,7 @@ export default function LoginPage() {
           アカウントをお持ちでない方は{" "}
           <Link
             href="/register"
+            data-testid="ui001-signup-link"
             className="font-semibold text-[#C2693C] underline"
           >
             新規登録

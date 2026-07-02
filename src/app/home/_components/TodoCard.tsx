@@ -1,5 +1,6 @@
 "use client";
 
+import { User } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,7 +8,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-  type TodoCardProps = {
+type TodoCardProps = {
+  id: string;
+
   taskName: string;
   isCompleted: boolean;
   completedById: string | null;
@@ -18,6 +21,7 @@ import {
 };
 
 export function TodoCard({
+  id,
   taskName,
   isCompleted,
   completedById,
@@ -27,19 +31,24 @@ export function TodoCard({
   onEdit,
 }: TodoCardProps) {
   return (
-    <div className="flex min-h-11 items-center justify-between gap-3 rounded-2xl bg-white p-4">
+    <div
+      data-testid={`todo-item-${id}`}
+      data-completed={isCompleted ? "true" : "false"}
+      className="flex min-h-11 items-center justify-between gap-3 rounded-2xl bg-white p-4"
+    >
       <div className="flex min-w-0 flex-1 items-center gap-3">
         {/* ★チェックボックス：タップ領域は44px以上を確保（画面設計書アクセシビリティ方針準拠） */}
         <button
           type="button"
+          data-testid={`todo-checkbox-${id}`}
           onClick={onToggle}
           role="checkbox"
           aria-checked={isCompleted}
           aria-label={`${taskName}を${isCompleted ? "未完了" : "完了"}にする`}
-          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 ${
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 transition-colors ${
             isCompleted
-              ? "border-[#C4956A] bg-[#C4956A]"
-              : "border-[#D8C0A8] bg-white"
+              ? "border-primary bg-primary hover:bg-primary/80"
+              : "border-accent-foreground/30 bg-white hover:border-primary hover:bg-accent"
           }`}
         >
           {/* ★色だけで状態を表現しない：チェックマークを併用 */}
@@ -62,7 +71,7 @@ export function TodoCard({
         </button>
 
         <span
-          className={`truncate text-sm ${
+          className={`truncate text-sm font-medium ${
             isCompleted
               ? "text-muted-foreground line-through"
               : "text-foreground"
@@ -77,8 +86,8 @@ export function TodoCard({
           現時点では人型アイコン＋IDの先頭4文字のみの仮表示。
           バックエンドでdisplay_nameカラム追加後、completed_by_name等に差し替える予定 */}
         {isCompleted && completedById && (
-          <div className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground">
-            <span aria-hidden="true">👤</span>
+          <div className="flex shrink-0 items-center gap-1 text-sm font-medium text-accent-foreground">
+            <User className="h-3.5 w-3.5" aria-hidden="true" />
             <span>{completedByName ?? completedById.slice(0, 4)}</span>
           </div>
         )}

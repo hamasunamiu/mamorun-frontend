@@ -9,6 +9,7 @@ export type Profile = {
   stripe_customer_id: string | null;
   pet_id: string | null;
   notification_time: "morning" | "night";
+  display_name: string;
   created_at: string;
 };
 
@@ -33,7 +34,7 @@ export type Todo = {
   task_name: string;
   is_completed: boolean;
   completed_by_id: string | null;
-  completed_by: { display_name: string | null } 
+  completed_by: { display_name: string | null } | null;
   completed_at: string | null;
   todo_date: string;
   created_at: string;

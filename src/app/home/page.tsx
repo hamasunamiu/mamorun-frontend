@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useEntityModal } from "./_components/useEntityModal";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -19,6 +20,7 @@ import { ScheduleFormModal } from "./_components/ScheduleFormModal";
 import { TodoSection } from "./_components/TodoSection";
 import { ScheduleSection } from "./_components/ScheduleSection";
 import { apiFetch } from "@/lib/api-client";
+import { setSelectedPetId } from "@/lib/petStorage";
 
 // ============================================================
 // フォーム用Zodスキーマ（画面設計書のバリデーション表に準拠）
@@ -74,7 +76,6 @@ export default function CareHomePage() {
     todos,
     setTodos,
     schedules,
-    setSchedules,
     petList,
     isLoading,
     loadError,
@@ -84,12 +85,8 @@ export default function CareHomePage() {
   // ------------------------------------------------------------
   // state（このコンポーネント固有のUI状態）
   // ------------------------------------------------------------
-  const [isTodoModalOpen, setIsTodoModalOpen] = useState(false);
-  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
-  const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
-  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(
-    null,
-  );
+  const todoModal = useEntityModal();
+  const scheduleModal = useEntityModal();
   const [isPetSwitchModalOpen, setIsPetSwitchModalOpen] = useState(false);
 
   // 削除確認Modal用：「何を削除しようとしているか」をtype/id/nameで保持し、
@@ -134,9 +131,8 @@ export default function CareHomePage() {
   // ------------------------------------------------------------
 
   const handleStartAddTodo = () => {
-    setEditingTodoId(null);
     resetTodoForm({ taskName: "" });
-    setIsTodoModalOpen(true);
+    todoModal.openForAdd();
   };
 
   const handleRequestDeleteTodo = (todo: Todo) => {
@@ -144,39 +140,59 @@ export default function CareHomePage() {
   };
 
   const handleStartEditTodo = (todo: Todo) => {
-    setEditingTodoId(todo.id);
     resetTodoForm({ taskName: todo.task_name });
-    setIsTodoModalOpen(true);
+    todoModal.openForEdit(todo.id);
   };
 
   const handleToggleTodo = async (todoId: string) => {
     const todo = todos.find((t) => t.id === todoId);
     if (!todo) return;
 
+    const nextIsCompleted = !todo.is_completed;
+
+    // 楽観的更新：自分の操作なので、Realtimeを待たずにその場で表示を更新する
+    setTodos((prevTodos) =>
+      prevTodos.map((t) =>
+        t.id === todoId
+          ? {
+              ...t,
+              is_completed: nextIsCompleted,
+              completed_by: nextIsCompleted
+                ? { display_name: profile?.display_name ?? null }
+                : null,
+            }
+          : t,
+      ),
+    );
+
     try {
       await apiFetch(`/api/todos/${todoId}`, {
         method: "PATCH",
-        body: JSON.stringify({ is_completed: !todo.is_completed }),
+        body: JSON.stringify({ is_completed: nextIsCompleted }),
       });
     } catch (err) {
-      console.error("ToDo完了切り替え失敗;", err);
+      console.error("ToDo完了切り替え失敗:", err);
+      // 失敗時はロールバック（元の状態に戻す）
+      setTodos((prevTodos) =>
+        prevTodos.map((t) => (t.id === todoId ? todo : t)),
+      );
     }
   };
 
   // editingTodoIdの有無で「新規追加」か「既存の更新」かを分岐する
   const onSubmitTodo = async (values: TodoFormValues) => {
-    if (editingTodoId) {
-      try{
-        await apiFetch(`/api/todos/${editingTodoId}`, {
+    if (todoModal.editingId) {
+      try {
+        await apiFetch(`/api/todos/${todoModal.editingId}`, {
           method: "PATCH",
           body: JSON.stringify({ task_name: values.taskName }),
         });
         setTodos((prevTodos) =>
           prevTodos.map((todo) =>
-            todo.id === editingTodoId
+            todo.id === todoModal.editingId
               ? { ...todo, task_name: values.taskName }
-              : todo
-         )
+              : todo,
+          ),
         );
       } catch (err) {
         console.error("ToDo更新失敗:", err);
@@ -193,8 +209,7 @@ export default function CareHomePage() {
     }
 
     resetTodoForm();
-    setEditingTodoId(null);
-    setIsTodoModalOpen(false);
+    todoModal.close();
   };
 
   // ------------------------------------------------------------
@@ -202,13 +217,12 @@ export default function CareHomePage() {
   // ------------------------------------------------------------
 
   const handleStartAddSchedule = () => {
-    setEditingScheduleId(null);
     resetScheduleForm({
       title: "",
       scheduledContent: "",
       scheduledDate: "",
     });
-    setIsScheduleModalOpen(true);
+    scheduleModal.openForAdd();
   };
 
   const handleRequestDeleteSchedule = (schedule: Schedule) => {
@@ -220,13 +234,12 @@ export default function CareHomePage() {
   };
 
   const handleStartEditSchedule = (schedule: Schedule) => {
-    setEditingScheduleId(schedule.id);
     resetScheduleForm({
       title: schedule.title,
       scheduledContent: schedule.scheduled_content ?? "",
       scheduledDate: schedule.scheduled_date,
     });
-    setIsScheduleModalOpen(true);
+    scheduleModal.openForEdit(schedule.id);
   };
 
   const handleToggleSchedule = async (scheduleId: string) => {
@@ -238,21 +251,16 @@ export default function CareHomePage() {
         method: "PATCH",
         body: JSON.stringify({ is_completed: !schedule.is_completed }),
       });
-      setSchedules((prevSchedules) =>
-        prevSchedules.map((s) =>
-          s.id === scheduleId ? { ...s, is_completed: !s.is_completed } : s
-    )
-   );
-  } catch (err) {
-   console.error("スケジュール完了切り替え失敗:", err);
-  }
-};
+    } catch (err) {
+      console.error("スケジュール完了切り替え失敗:", err);
+    }
+  };
 
   // editingScheduleIdの有無で「新規追加」か「既存の更新」かを分岐する
   const onSubmitSchedule = async (values: ScheduleFormValues) => {
-    if (editingScheduleId) {
+    if (scheduleModal.editingId) {
       try {
-        await apiFetch(`/api/schedules/${editingScheduleId}`, {
+        await apiFetch(`/api/schedules/${scheduleModal.editingId}`, {
           method: "PATCH",
           body: JSON.stringify({
             title: values.title,
@@ -260,66 +268,51 @@ export default function CareHomePage() {
             scheduled_date: values.scheduledDate,
           }),
         });
-        setSchedules((prevSchedules) =>
-          prevSchedules.map((schedule) =>
-            schedule.id === editingScheduleId
-              ? {
-                  ...schedule,
-                  title: values.title,
-                  scheduled_content: values.scheduledContent || null,
-                  scheduled_date: values.scheduledDate,
-                }
-              : schedule
-            )
-          );
-        } catch (err) {
-          console.error("スケジュール更新失敗:", err);
-        }
+      } catch (err) {
+        console.error("スケジュール更新失敗:", err);
+      }
     } else {
       //新規追加モード
       try {
-        const newSchedule = await apiFetch<Schedule>("/api/schedules", {
+        await apiFetch("/api/schedules", {
           method: "POST",
           body: JSON.stringify({
-              title: values.title,
-              scheduled_content: values.scheduledContent || undefined,
-              scheduled_date: values.scheduledDate,
+            title: values.title,
+            scheduled_content: values.scheduledContent || undefined,
+            scheduled_date: values.scheduledDate,
           }),
         });
-        setSchedules((prevSchedules) => [...prevSchedules, newSchedule]);
-       } catch (err) {
+      } catch (err) {
         console.error("スケジュール追加失敗:", err);
-       }
+      }
     }
 
     resetScheduleForm();
-    setEditingScheduleId(null);
-    setIsScheduleModalOpen(false);
+    scheduleModal.close();
   };
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
 
     try {
-    if (deleteTarget.type === "todo") {
-      await apiFetch(`/api/todos/${deleteTarget.id}`, { method: "DELETE" });
-      // Realtimeがstateを更新するので setTodos は不要
-    } else {
-      await apiFetch(`/api/schedules/${deleteTarget.id}`, { method: "DELETE" });
-      setSchedules((prevSchedules) =>
-        prevSchedules.filter((schedule) => schedule.id !== deleteTarget.id)
-      );
+      if (deleteTarget.type === "todo") {
+        await apiFetch(`/api/todos/${deleteTarget.id}`, { method: "DELETE" });
+        // Realtimeがstateを更新するので setTodos は不要
+      } else {
+        await apiFetch(`/api/schedules/${deleteTarget.id}`, {
+          method: "DELETE",
+        });
+      }
+    } catch (err) {
+      console.error("削除失敗:", err);
     }
-  } catch (err) {
-    console.error("削除失敗:", err);
-  }
 
-  setDeleteTarget(null);
-};
+    setDeleteTarget(null);
+  };
 
   const handleSwitchPet = (selectedPet: Pet) => {
     setPet(selectedPet);
-    localStorage.setItem('selectedPetId', selectedPet.id);
+    setSelectedPetId(selectedPet.id);
     setIsPetSwitchModalOpen(false);
   };
 
@@ -329,7 +322,7 @@ export default function CareHomePage() {
 
   if (isLoading) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-md items-center justify-center bg-[#FAF8F6]">
+      <main className="mx-auto flex h-dvh w-full max-w-[430px] items-center justify-center bg-[#FAF8F6]">
         <LoadingSpinner size="lg" />
       </main>
     );
@@ -337,7 +330,7 @@ export default function CareHomePage() {
 
   if (loadError) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-md items-center justify-center bg-[#FAF8F6] px-6">
+      <main className="mx-auto flex h-dvh w-full max-w-[430px] items-center justify-center bg-[#FAF8F6] px-6">
         <ErrorMessage message={loadError} />
       </main>
     );
@@ -348,7 +341,7 @@ export default function CareHomePage() {
   // ------------------------------------------------------------
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-[#FAF8F6]">
+    <div className="mx-auto flex h-dvh w-full max-w-[430px] flex-col overflow-hidden bg-[#FAF8F6]">
       <Header
         petName={pet?.name}
         petSpecies={pet?.species}
@@ -365,9 +358,9 @@ export default function CareHomePage() {
         }
       />
 
-      <main className="flex-1 px-6 py-6">
+      <main className="flex-1 overflow-y-auto px-6 py-6">
         {isMounted && (
-          <p className="mb-5 text-lg font-semibold text-[#9E7654]">
+          <p className="mb-5 text-xl font-semibold text-accent-foreground">
             {formatDateLabel(new Date())}
           </p>
         )}
@@ -394,12 +387,11 @@ export default function CareHomePage() {
 
       {/* ToDo追加・編集用のModal */}
       <TodoFormModal
-        open={isTodoModalOpen}
-        onOpenChange={(open) => {
-          setIsTodoModalOpen(open);
-          if (!open) setEditingTodoId(null);
-        }}
-        isEditing={editingTodoId !== null}
+        open={todoModal.isOpen}
+        onOpenChange={(open) =>
+          open ? todoModal.openForAdd() : todoModal.close()
+        }
+        isEditing={todoModal.isEditing}
         onSubmit={handleSubmitTodo(onSubmitTodo)}
         register={registerTodo}
         errors={todoErrors}
@@ -407,12 +399,11 @@ export default function CareHomePage() {
 
       {/* 予定追加・編集用のModal */}
       <ScheduleFormModal
-        open={isScheduleModalOpen}
-        onOpenChange={(open) => {
-          setIsScheduleModalOpen(open);
-          if (!open) setEditingScheduleId(null);
-        }}
-        isEditing={editingScheduleId !== null}
+        open={scheduleModal.isOpen}
+        onOpenChange={(open) =>
+          open ? scheduleModal.openForAdd() : scheduleModal.close()
+        }
+        isEditing={scheduleModal.isEditing}
         onSubmit={handleSubmitSchedule(onSubmitSchedule)}
         register={registerSchedule}
         errors={scheduleErrors}
@@ -426,9 +417,7 @@ export default function CareHomePage() {
         onConfirm={handleConfirmDelete}
       />
 
-      {/* ペット切り替え用のModal（2匹以上の場合に表示）
-      現時点ではMOCK_PET_LISTを使用。複数ペット取得APIの仕様確定後、
-      GET /api/pets相当のレスポンスをpetListにセットするだけで完成する設計 */}
+      {/* ペット切り替え用のModal（2匹以上の場合に表示） */}
       <PetSwitchModal
         open={isPetSwitchModalOpen}
         onOpenChange={setIsPetSwitchModalOpen}

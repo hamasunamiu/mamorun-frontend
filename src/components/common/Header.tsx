@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Dog, Cat } from "lucide-react";
 
 type HeaderProps = {
   title?: string;
@@ -36,11 +36,18 @@ export function Header({
             aria-label="ペットを切り替える"
           >
             {petName}
-            {petSpecies && (
-              <span aria-hidden="true">
-                {petSpecies === "dog" ? "🐶" : "🐱"}
-              </span>
-            )} 
+            {petSpecies &&
+              (petSpecies === "dog" ? (
+                <Dog
+                  className="h-5 w-5 text-accent-foreground"
+                  aria-hidden="true"
+                />
+              ) : (
+                <Cat
+                  className="h-5 w-5 text-accent-foreground"
+                  aria-hidden="true"
+                />
+              ))}
             {suffix && <span>{suffix}</span>}
             <ChevronDown className="h-4 w-4 text-muted-foreground" />
           </button>

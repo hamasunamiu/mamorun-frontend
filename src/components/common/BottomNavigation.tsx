@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Timeline, MessageCircle, Building2, Settings } from "lucide-react";
+import {
+  Home,
+  Timeline,
+  MessageCircle,
+  Building2,
+  Settings,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -17,7 +23,10 @@ export function BottomNavigation() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex items-center justify-around border-t border-border bg-background py-2.5">
+    <nav
+      className="flex items-center justify-around border-t border-border bg-background py-2.5"
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 0.625rem)" }}
+    >
       {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
         const isActive = pathname === href;
 
@@ -31,14 +40,14 @@ export function BottomNavigation() {
             <Icon
               className={cn(
                 "h-[22px] w-[22px]",
-                isActive ? "text-[#C4956A]" : "text-muted-foreground"
+                isActive ? "text-primary" : "text-muted-foreground",
               )}
               aria-hidden="true"
             />
             <span
               className={cn(
                 "text-[10px]",
-                isActive ? "text-[#C4956A]" : "text-muted-foreground"
+                isActive ? "text-primary" : "text-muted-foreground",
               )}
             >
               {label}
