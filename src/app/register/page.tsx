@@ -145,10 +145,15 @@ export default function RegisterPage() {
     });
 
     if (signUpError) {
+      const isDuplicate = signUpError.code === "user_already_exists";
+
       setAuthError(
-        "このメールアドレスはすでに登録されています。すでにアカウントをお持ちの場合はログインをお試しください。解決しない場合はお問い合わせください。",
+        isDuplicate
+          ? "このメールアドレスはすでに登録されています。すでにアカウントをお持ちの場合はログインをお試しください。解決しない場合はお問い合わせください。"
+          : signUpError.message ||
+              "登録に失敗しました。時間をおいて再度お試しください。",
       );
-      setIsEmailDuplicateError(true); // ログイン誘導リンクを表示するフラグを立てる
+      setIsEmailDuplicateError(isDuplicate); // メール重複時のみログイン誘導リンクを表示
       setIsSubmitting(false);
       isSubmittingRef.current = false;
       return;
