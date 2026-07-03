@@ -102,6 +102,75 @@ export function useCareHomeData() {
   }, []);
 
   // ------------------------------------------------------------
+  // Supabase Realtime：todosテーブルの変更を監視
+  // ------------------------------------------------------------
+
+  useEffect(() => {
+    // ★【最重要】バックエンドからの指示通り、変更通知を受け取った際は再fetchせず、
+    // payload.new / payload.old を使ってstateを直接更新する（再fetchはキャッシュ競合の原因になるため禁止）。
+    // pet.idが確定する前にフィルタを組み立てると意味のないチャンネルになるため、
+    // pet?.id が存在する場合のみリスナーを登録する。
+    if (!pet?.id) return;
+
+    const channel = supabase
+      .channel(`todos-changes-${pet.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "todos",
+          filter: `pet_id=eq.${pet.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const newTodo = payload.new as Todo;
+            setTodos((prevTodos) => {
+              if (prevTodos.some((todo) => todo.id === newTodo.id)) {
+                return prevTodos;
+              }
+              return [...prevTodos, newTodo];
+            });
+          } else if (payload.eventType === "UPDATE") {
+            const updatedTodo = payload.new as Todo;
+            setTodos((prevTodos) =>
+              prevTodos.map((todo) => {
+                if (todo.id !== updatedTodo.id) return todo;
+
+                const resolvedMember = updatedTodo.completed_by_id
+                  ? membersRef.current.find((m) => m.id === updatedTodo.completed_by_id)
+                  : null;
+
+                return {
+                  ...todo,
+                  ...updatedTodo,
+                  completed_by: updatedTodo.is_completed
+                    ? (resolvedMember
+                        ? { display_name: resolvedMember.display_name }
+                        : todo.completed_by)
+                    : null,
+                };
+              }),
+            );
+          } else if (payload.eventType === "DELETE") {
+            const deletedTodo = payload.old as Todo;
+            setTodos((prevTodos) =>
+              prevTodos.filter((todo) => todo.id !== deletedTodo.id),
+            );
+          }
+        },
+      )
+      .subscribe();
+
+    // ★重要：コンポーネントが画面から消える時（クリーンアップ時）に、
+    // 必ずチャンネルの登録を解除する。これを忘れると、画面を何度も開閉した際に
+    // 同じイベントを複数回受け取ってしまう不具合の原因になる
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [pet?.id]);
+
+  // ------------------------------------------------------------
   // Supabase Realtime：invitationsテーブルの変更を監視
   // 新規メンバーが招待を受諾した瞬間（is_used: false→true）を検知し、
   // membersを再取得する。招待受諾時は完全なprofilesレコードがpayloadに
@@ -144,9 +213,6 @@ export function useCareHomeData() {
       )
       .subscribe();
 
-    // ★重要：コンポーネントが画面から消える時（クリーンアップ時）に、
-    // 必ずチャンネルの登録を解除する。これを忘れると、画面を何度も開閉した際に
-    // 同じイベントを複数回受け取ってしまう不具合の原因になる
     return () => {
       supabase.removeChannel(channel);
     };
