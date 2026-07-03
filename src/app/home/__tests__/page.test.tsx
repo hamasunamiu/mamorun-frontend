@@ -96,6 +96,8 @@ function createMockHookReturn(
     schedules: [mockSchedule],
     setSchedules: jest.fn(),
     petList: [mockPet],
+    members: [],
+    setMembers: jest.fn(),
     isLoading: false,
     loadError: null,
     isMounted: true,
