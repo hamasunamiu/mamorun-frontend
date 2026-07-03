@@ -239,11 +239,13 @@ export default function TimelinePage() {
                 {log.title}
               </p>
               {log.attached_image_url && (
-                <img
-                  src={log.attached_image_url}
-                  alt="添付画像"
-                  className="w-full h-32 rounded-lg object-cover mb-2"
-                />
+                <div className="w-full max-h-64 bg-[#f5f0ea] rounded-lg mb-2 flex items-center justify-center overflow-hidden">
+                  <img
+                    src={log.attached_image_url}
+                    alt="添付画像"
+                    className="max-w-full max-h-64 object-contain"
+                  />
+                </div>
               )}
               {log.detail_memo && (
                 <p className="text-sm text-gray-500 leading-relaxed mb-3">
