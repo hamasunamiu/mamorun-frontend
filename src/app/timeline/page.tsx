@@ -13,6 +13,7 @@ import type { Pet } from "@/types";
 import { uploadPetImage } from "@/lib/petImageUpload";
 import { PetSwitchModal } from "@/components/common/PetSwitchModal";
 import { getSelectedPetId, setSelectedPetId } from "@/lib/petStorage";
+import { supabase } from "@/lib/supabase";
 
 type HealthLog = {
   id: string;
@@ -79,6 +80,45 @@ export default function TimelinePage() {
     fetchLogs();
   }, []);
 
+  useEffect(() => {
+    if (!pet?.id) return;
+
+    const channel = supabase
+      .channel(`health-logs-changes-${pet.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "health_logs",
+          filter: `pet_id=eq.${pet.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const newLog = payload.new as HealthLog;
+            setLogs((prevLogs) => {
+              if (prevLogs.some((l) => l.id === newLog.id)) {
+                return prevLogs;
+              }
+              return [newLog, ...prevLogs];
+            });
+          } else if (payload.eventType === "DELETE") {
+            const deletedLog = payload.old as HealthLog;
+            setLogs((prevLogs) =>
+              prevLogs.filter((l) => l.id !== deletedLog.id),
+            );
+          }
+        },
+      )
+      .subscribe((status) => {
+        console.log("[Realtime] health_logs Subscription status:", status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [pet?.id]);
+
   const isSubmitDisabled = title.trim() === "" || isSubmitting;
 
   const handleSubmit = async () => {
@@ -103,8 +143,7 @@ export default function TimelinePage() {
           attached_image_url: attachedImageUrl,
         }),
       });
-      setLogs((prev) => [newLog, ...prev]);
-      setTitle("");
+
       setMemo("");
       setImageFile(null);
       setImageUploaderKey((prev) => prev + 1);
@@ -131,7 +170,6 @@ export default function TimelinePage() {
       await apiFetch(`/api/health-logs/${deleteTargetId}`, {
         method: "DELETE",
       });
-      setLogs((prev) => prev.filter((log) => log.id !== deleteTargetId));
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
