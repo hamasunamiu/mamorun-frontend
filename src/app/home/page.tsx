@@ -313,9 +313,13 @@ export default function CareHomePage() {
   };
 
   const handleSwitchPet = async (selectedPet: Pet) => {
-    await switchToPet(selectedPet);
-    setSelectedPetId(selectedPet.id);
-    setIsPetSwitchModalOpen(false);
+    const success = await switchToPet(selectedPet);
+    if (success) {
+      setSelectedPetId(selectedPet.id);
+      setIsPetSwitchModalOpen(false);
+    }
+    // 失敗時はここで何もしない
+    // → localStorageは更新されず、モーダルも開いたまま（switchErrorがモーダル内に表示される想定）
   };
 
   // ------------------------------------------------------------

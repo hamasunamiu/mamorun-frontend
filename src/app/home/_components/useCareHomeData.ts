@@ -109,7 +109,7 @@ export function useCareHomeData() {
   // バックエンドの petId クエリパラメータ対応後に有効化される想定。
   // 対応前は petId が無視され、代表ペット（profiles.pet_id）のデータが
   // 返ってくるだけなので、挙動は変わらない（安全にマージ可能）。
-  const switchToPet = async (selectedPet: Pet) => {
+  const switchToPet = async (selectedPet: Pet): Promise<boolean> => {
     setIsSwitching(true);
     setSwitchError(null);
 
@@ -122,6 +122,7 @@ export function useCareHomeData() {
       setPet(selectedPet);
       setTodos(todosData ?? []);
       setSchedules(schedulesData ?? []);
+      return true;
     } catch (err) {
       setSwitchError(
         err instanceof ApiError
@@ -129,6 +130,7 @@ export function useCareHomeData() {
           : "ペットの切り替えに失敗しました。時間をおいて再度お試しください。",
       );
       // 失敗時はペット表示・データともに切り替えない（元の状態を維持）
+      return false;
     } finally {
       setIsSwitching(false);
     }
