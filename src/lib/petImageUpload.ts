@@ -9,7 +9,7 @@ import { supabase } from "@/lib/supabase";
 export async function uploadPetImage(
   petId: string,
   file: File,
-  fileName: "hospital-card" | "insurance-card" | "health-log"
+  fileName: "hospital-card" | "insurance-card" | "health-log",
 ): Promise<string> {
   const fileExt = file.name.split(".").pop();
   const uniqueSuffix = fileName === "health-log" ? `-${Date.now()}` : "";
@@ -20,10 +20,9 @@ export async function uploadPetImage(
     .upload(path, file, { upsert: true });
 
   if (error) {
-    throw new Error(
-      `画像のアップロードに失敗しました`);
+    throw new Error(`画像のアップロードに失敗しました`);
   }
 
   const { data } = supabase.storage.from("pet-images").getPublicUrl(path);
-  return data.publicUrl;
+  return `${data.publicUrl}?t=${Date.now()}`;
 }

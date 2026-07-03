@@ -191,10 +191,10 @@ function SettingsPageContent() {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-[#FFF9F5] pb-20">
+    <div className="mx-auto flex h-dvh w-full max-w-[430px] flex-col bg-[#FAF8F6]">
       <Header title="設定" />
 
-      <div className="p-4 flex flex-col gap-3">
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 pb-24">
         {/* アカウント情報 */}
         <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
           <p className="flex items-center gap-1.5 text-xs font-medium text-[#993C1D] mb-3">
@@ -313,13 +313,7 @@ function SettingsPageContent() {
               {isLineLinked ? (
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between">
-                    {/* ★シークレットボタン：この文字自体をタップするとLINEテスト送信が実行される */}
-                    <button
-                      className="text-xs text-green-600 bg-transparent border-none p-0 cursor-pointer"
-                      onClick={handleSendLineTest}
-                    >
-                      連携済み
-                    </button>
+                    <span className="text-xs text-green-600">連携済み</span>
                     <button
                       className="text-xs text-gray-500 underline"
                       onClick={() => setIsLineUnlinkModalOpen(true)}

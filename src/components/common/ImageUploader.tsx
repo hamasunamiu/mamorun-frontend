@@ -15,6 +15,8 @@ type ImageUploaderProps = {
   required?: boolean;
   /** ファイルが選択された時のコールバック（バリデーション通過後のみ呼ばれる） */
   onFileSelect: (file: File) => void;
+  /** 画像が削除された時のコールバック */
+  onRemove?: () => void;
   /** すでにアップロード済みの画像URL（編集時の初期表示用） */
   initialImageUrl?: string;
 };
@@ -23,6 +25,7 @@ export function ImageUploader({
   label,
   required = false,
   onFileSelect,
+  onRemove,
   initialImageUrl,
 }: ImageUploaderProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(
@@ -63,6 +66,7 @@ export function ImageUploader({
     if (inputRef.current) {
       inputRef.current.value = "";
     }
+    onRemove?.();
   };
 
   useEffect(() => {
