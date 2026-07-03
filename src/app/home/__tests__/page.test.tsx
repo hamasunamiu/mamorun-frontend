@@ -99,6 +99,9 @@ function createMockHookReturn(
     isLoading: false,
     loadError: null,
     isMounted: true,
+    switchToPet: jest.fn(),
+    isSwitching: false,
+    switchError: null,
     ...overrides,
   };
 }
@@ -566,9 +569,9 @@ describe("CareHomePage", () => {
         expect(await screen.findByRole("dialog")).toBeInTheDocument();
       });
 
-      test("UT-F-229: ペットを選択するとpetが切り替わりModalが閉じる", async () => {
+      test("UT-F-229: ペットを選択するとswitchToPetが呼ばれModalが閉じる", async () => {
         const user = userEvent.setup();
-        const mockSetPet = jest.fn();
+        const mockSwitchToPet = jest.fn();
         const secondPet = {
           ...mockPet,
           id: "pet-2",
@@ -578,7 +581,7 @@ describe("CareHomePage", () => {
         (useCareHomeData as jest.Mock).mockReturnValue(
           createMockHookReturn({
             petList: [mockPet, secondPet],
-            setPet: mockSetPet,
+            switchToPet: mockSwitchToPet,
           }),
         );
 
@@ -589,7 +592,11 @@ describe("CareHomePage", () => {
         );
         await user.click(await screen.findByText("たま"));
 
-        expect(mockSetPet).toHaveBeenCalledWith(secondPet);
+        expect(mockSwitchToPet).toHaveBeenCalledWith(secondPet);
+
+        await waitFor(() => {
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
       });
     });
 

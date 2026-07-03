@@ -72,7 +72,6 @@ export default function CareHomePage() {
   const {
     profile,
     pet,
-    setPet,
     todos,
     setTodos,
     schedules,
@@ -80,6 +79,9 @@ export default function CareHomePage() {
     isLoading,
     loadError,
     isMounted,
+    switchToPet,
+    isSwitching,
+    switchError,
   } = useCareHomeData();
 
   // ------------------------------------------------------------
@@ -310,8 +312,8 @@ export default function CareHomePage() {
     setDeleteTarget(null);
   };
 
-  const handleSwitchPet = (selectedPet: Pet) => {
-    setPet(selectedPet);
+  const handleSwitchPet = async (selectedPet: Pet) => {
+    await switchToPet(selectedPet);
     setSelectedPetId(selectedPet.id);
     setIsPetSwitchModalOpen(false);
   };
@@ -346,8 +348,7 @@ export default function CareHomePage() {
         petName={pet?.name}
         petSpecies={pet?.species}
         onPetSwitch={() => {
-          // TODO: 複数ペット一覧取得APIの仕様確定後に実装
-          if (petList.length > 1) {
+          if (petList.length > 1 && !isSwitching) {
             setIsPetSwitchModalOpen(true);
           }
         }}
@@ -364,6 +365,8 @@ export default function CareHomePage() {
             {formatDateLabel(new Date())}
           </p>
         )}
+
+        {switchError && <ErrorMessage message={switchError} />}
 
         {/* 今日のお世話ToDoチェックリスト */}
         <TodoSection
