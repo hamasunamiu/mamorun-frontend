@@ -189,9 +189,10 @@ export default function TimelinePage() {
   };
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-[430px] flex-col overflow-hidden bg-[#FFF9F5]">
+    <div className="mx-auto flex h-dvh w-full max-w-[430px] flex-col overflow-hidden bg-[#FAF8F6]">
       <Header
         petName={pet?.name}
+        petSpecies={pet?.species}
         dateLabel={new Date().toLocaleDateString("ja-JP", {
           month: "long",
           day: "numeric",
@@ -203,6 +204,18 @@ export default function TimelinePage() {
           }
         }}
       />
+
+      {/* ★投稿ボタン：ヘッダー直下・右寄せで固定表示 */}
+      <div className="flex justify-end px-4 pt-2">
+        <button
+          data-testid="ui003-open-post-modal-button"
+          onClick={() => setIsPostModalOpen(true)}
+          className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center shadow-lg"
+          aria-label="記録を追加"
+        >
+          <Plus size={22} strokeWidth={2} />
+        </button>
+      </div>
 
       {/* 過去の投稿一覧（スクロールエリア） */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
@@ -267,16 +280,6 @@ export default function TimelinePage() {
           ))
         )}
       </div>
-
-      {/* 投稿用FABボタン（右下固定） */}
-      <button
-        data-testid="ui003-open-post-modal-button"
-        onClick={() => setIsPostModalOpen(true)}
-        className="fixed bottom-24 right-6 w-14 h-14 rounded-full bg-[#D85A30] text-white flex items-center justify-center shadow-lg z-10"
-        aria-label="記録を追加"
-      >
-        <Plus size={24} strokeWidth={2} />
-      </button>
 
       <PetSwitchModal
         open={isPetSwitchModalOpen}
