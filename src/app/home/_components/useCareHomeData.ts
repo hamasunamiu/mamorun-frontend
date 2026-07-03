@@ -127,7 +127,7 @@ export function useCareHomeData() {
         },
         (payload) => {
           const oldRow = payload.old as { is_used?: boolean };
-          const newRow = payload.old as { is_used?: boolean };
+          const newRow = payload.new as { is_used?: boolean };
 
           //is_usedがfalse→trueに変わった瞬間（＝招待受諾成功の瞬間）のみ反応
           if (oldRow.is_used === false && newRow.is_used === true) {
