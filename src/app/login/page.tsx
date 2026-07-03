@@ -54,9 +54,9 @@ export default function LoginPage() {
   });
 
   return (
-    <main className="min-h-dvh bg-[#FAF8F6]">
+    <main className="min-h-dvh bg-white">
       <div
-        className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col px-6 py-8"
+        className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col bg-[#FAF8F6] px-6 py-8"
         style={{
           paddingTop: "calc(env(safe-area-inset-top) + 2rem)",
           paddingBottom: "calc(env(safe-area-inset-bottom) + 2rem)",
