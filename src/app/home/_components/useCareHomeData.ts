@@ -114,14 +114,16 @@ export function useCareHomeData() {
     setSwitchError(null);
 
     try {
-      const [todosData, schedulesData] = await Promise.all([
+      const [todosData, schedulesData, membersData] = await Promise.all([
         apiFetch<Todo[]>(`/api/todos?petId=${selectedPet.id}`),
         apiFetch<Schedule[]>(`/api/schedules?petId=${selectedPet.id}`),
+        apiFetch<Member[]>(`/api/pets/${selectedPet.id}/members`),
       ]);
 
       setPet(selectedPet);
       setTodos(todosData ?? []);
       setSchedules(schedulesData ?? []);
+      setMembers(membersData ?? []);
       return true;
     } catch (err) {
       setSwitchError(
@@ -129,7 +131,6 @@ export function useCareHomeData() {
           ? err.message
           : "ペットの切り替えに失敗しました。時間をおいて再度お試しください。",
       );
-      // 失敗時はペット表示・データともに切り替えない（元の状態を維持）
       return false;
     } finally {
       setIsSwitching(false);
