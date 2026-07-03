@@ -140,7 +140,7 @@ export default function AiChatPage() {
   };
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-[430px] flex-col bg-[#FFF9F5] pb-16">
+    <div className="mx-auto flex h-dvh w-full max-w-[430px] flex-col overflow-hidden bg-[#FAF8F6]">
       <Header title="獣医師AI相談" />
 
       {/* 残り回数バッジ */}

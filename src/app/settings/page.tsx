@@ -191,7 +191,7 @@ function SettingsPageContent() {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-[#FFF9F5] pb-20">
+    <div className="mx-auto flex h-dvh w-full max-w-[430px] flex-col overflow-hidden bg-[#FAF8F6]">
       <Header title="設定" />
 
       <div className="p-4 flex flex-col gap-3">

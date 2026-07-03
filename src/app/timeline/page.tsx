@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { PenLine, Trash2, Plus } from "lucide-react";
 import { Header } from "@/components/common/Header";
 import { BottomNavigation } from "@/components/common/BottomNavigation";
 import { InputField } from "@/components/common/InputField";
@@ -11,7 +12,9 @@ import { apiFetch, ApiError } from "@/lib/api-client";
 import type { Pet } from "@/types";
 import { uploadPetImage } from "@/lib/petImageUpload";
 import { PetSwitchModal } from "@/components/common/PetSwitchModal";
- 
+import { getSelectedPetId, setSelectedPetId } from "@/lib/petStorage";
+import { supabase } from "@/lib/supabase";
+
 type HealthLog = {
   id: string;
   pet_id: string;
@@ -21,7 +24,7 @@ type HealthLog = {
   attached_image_url: string | null;
   created_at: string;
 };
- 
+
 export default function TimelinePage() {
   const [logs, setLogs] = useState<HealthLog[]>([]);
   const [title, setTitle] = useState("");
@@ -37,25 +40,26 @@ export default function TimelinePage() {
   const [pet, setPet] = useState<Pet | null>(null);
   const [petList, setPetList] = useState<Pet[]>([]);
   const [isPetSwitchModalOpen, setIsPetSwitchModalOpen] = useState(false);
- 
+  const [isPostModalOpen, setIsPostModalOpen] = useState(false);
+
   useEffect(() => {
     const fetchLogs = async () => {
-      const savedPetId = localStorage.getItem("selectedPetId");
- 
+      const savedPetId = getSelectedPetId();
+
       const [logsResult, profileResult] = await Promise.allSettled([
         apiFetch<HealthLog[]>("/api/health-logs"),
         apiFetch<{ id: string; pet_id: string | null }>("/api/profiles/me"),
       ]);
- 
+
       if (logsResult.status === "fulfilled") {
         setLogs(logsResult.value ?? []);
       } else {
         setError("体調ログの取得に失敗しました。");
       }
- 
+
       if (profileResult.status === "fulfilled") {
         setCurrentUserId(profileResult.value.id);
- 
+
         const targetPetId = savedPetId ?? profileResult.value.pet_id;
         if (targetPetId) {
           try {
@@ -70,24 +74,67 @@ export default function TimelinePage() {
           }
         }
       }
- 
+
       setIsLoading(false);
     };
     fetchLogs();
   }, []);
- 
+
+  useEffect(() => {
+    if (!pet?.id) return;
+
+    const channel = supabase
+      .channel(`health-logs-changes-${pet.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "health_logs",
+          filter: `pet_id=eq.${pet.id}`,
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const newLog = payload.new as HealthLog;
+            setLogs((prevLogs) => {
+              if (prevLogs.some((l) => l.id === newLog.id)) {
+                return prevLogs;
+              }
+              return [newLog, ...prevLogs];
+            });
+          } else if (payload.eventType === "DELETE") {
+            const deletedLog = payload.old as HealthLog;
+            setLogs((prevLogs) =>
+              prevLogs.filter((l) => l.id !== deletedLog.id),
+            );
+          }
+        },
+      )
+      .subscribe((status) => {
+        console.log("[Realtime] health_logs Subscription status:", status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [pet?.id]);
+
   const isSubmitDisabled = title.trim() === "" || isSubmitting;
- 
+
   const handleSubmit = async () => {
     if (isSubmitDisabled) return;
     setIsSubmitting(true);
     try {
       let attachedImageUrl: string | undefined;
- 
+
       if (imageFile && pet) {
-        attachedImageUrl = await uploadPetImage(pet.id, imageFile, "health-log");
+        attachedImageUrl = await uploadPetImage(
+          pet.id,
+          imageFile,
+          "health-log",
+        );
       }
- 
+
       const newLog = await apiFetch<HealthLog>("/api/health-logs", {
         method: "POST",
         body: JSON.stringify({
@@ -96,11 +143,11 @@ export default function TimelinePage() {
           attached_image_url: attachedImageUrl,
         }),
       });
-      setLogs((prev) => [newLog, ...prev]);
-      setTitle("");
+
       setMemo("");
       setImageFile(null);
       setImageUploaderKey((prev) => prev + 1);
+      setIsPostModalOpen(false);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -111,19 +158,18 @@ export default function TimelinePage() {
       setIsSubmitting(false);
     }
   };
- 
+
   const handleDeleteClick = (id: string) => {
     setDeleteTargetId(id);
     setIsDeleteModalOpen(true);
   };
- 
+
   const handleDeleteConfirm = async () => {
     if (!deleteTargetId) return;
     try {
       await apiFetch(`/api/health-logs/${deleteTargetId}`, {
         method: "DELETE",
       });
-      setLogs((prev) => prev.filter((log) => log.id !== deleteTargetId));
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -135,17 +181,18 @@ export default function TimelinePage() {
       setDeleteTargetId(null);
     }
   };
- 
+
   const handleSwitchPet = (selectedPet: Pet) => {
     setPet(selectedPet);
-    localStorage.setItem("selectedPetId", selectedPet.id);
+    setSelectedPetId(selectedPet.id);
     setIsPetSwitchModalOpen(false);
   };
- 
+
   return (
-    <div className="min-h-screen bg-[#FFF9F5] pb-20">
+    <div className="mx-auto flex h-dvh w-full max-w-[430px] flex-col overflow-hidden bg-[#FAF8F6]">
       <Header
         petName={pet?.name}
+        petSpecies={pet?.species}
         dateLabel={new Date().toLocaleDateString("ja-JP", {
           month: "long",
           day: "numeric",
@@ -157,47 +204,21 @@ export default function TimelinePage() {
           }
         }}
       />
- 
-      <div className="p-4 flex flex-col gap-3">
-        <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
-          <p className="text-sm font-medium text-[#993C1D] mb-3">
-            ✏️ 今日の記録を追加
-          </p>
-          <div className="flex flex-col gap-3">
-            <InputField
-              label="タイトル"
-              name="title"
-              data-testid="log-title-input"
-              placeholder="例：朝の体調チェック"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-            <TextAreaField
-              label="体調メモ"
-              name="memo"
-              data-testid="log-memo-input"
-              placeholder="例：食欲あり、元気です"
-              value={memo}
-              onChange={(e) => setMemo(e.target.value)}
-            />
-            <ImageUploader
-              key={imageUploaderKey}
-              label="写真"
-              onFileSelect={(file) => setImageFile(file)}
-            />
-          </div>
-          {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
-          <PrimaryButton
-            data-testid="ui003-post-log-button"
-            className="w-full mt-3 bg-[#D85A30] text-white hover:bg-[#D85A30] hover:opacity-85"
-            onClick={handleSubmit}
-            disabled={isSubmitDisabled}
-          >
-            {isSubmitting ? "投稿中..." : "投稿する"}
-          </PrimaryButton>
-        </div>
- 
+
+      {/* ★投稿ボタン：ヘッダー直下・右寄せで固定表示 */}
+      <div className="flex justify-end px-4 pt-2">
+        <button
+          data-testid="ui003-open-post-modal-button"
+          onClick={() => setIsPostModalOpen(true)}
+          className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center shadow-lg"
+          aria-label="記録を追加"
+        >
+          <Plus size={22} strokeWidth={2} />
+        </button>
+      </div>
+
+      {/* 過去の投稿一覧（スクロールエリア） */}
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
         {isLoading ? (
           <div className="text-center text-sm text-gray-400 py-8">
             読み込み中...
@@ -231,11 +252,13 @@ export default function TimelinePage() {
                 {log.title}
               </p>
               {log.attached_image_url && (
-                <img
-                  src={log.attached_image_url}
-                  alt="添付画像"
-                  className="w-full h-32 rounded-lg object-cover mb-2"
-                />
+                <div className="w-full max-h-64 bg-[#f5f0ea] rounded-lg mb-2 flex items-center justify-center overflow-hidden">
+                  <img
+                    src={log.attached_image_url}
+                    alt="添付画像"
+                    className="max-w-full max-h-64 object-contain"
+                  />
+                </div>
               )}
               {log.detail_memo && (
                 <p className="text-sm text-gray-500 leading-relaxed mb-3">
@@ -245,10 +268,11 @@ export default function TimelinePage() {
               {currentUserId === log.created_by_id && (
                 <div className="flex justify-end border-t border-[#f0e8e0] pt-2">
                   <button
-                    className="text-xs text-gray-400"
+                    className="flex items-center gap-1 text-xs text-gray-400"
                     onClick={() => handleDeleteClick(log.id)}
                   >
-                    🗑 削除
+                    <Trash2 size={12} strokeWidth={1} />
+                    削除
                   </button>
                 </div>
               )}
@@ -256,7 +280,7 @@ export default function TimelinePage() {
           ))
         )}
       </div>
- 
+
       <PetSwitchModal
         open={isPetSwitchModalOpen}
         onOpenChange={setIsPetSwitchModalOpen}
@@ -264,7 +288,52 @@ export default function TimelinePage() {
         currentPetId={pet?.id}
         onSwitch={handleSwitchPet}
       />
- 
+
+      {/* 投稿フォーム用モーダル */}
+      <Modal
+        open={isPostModalOpen}
+        onOpenChange={setIsPostModalOpen}
+        title="今日の記録を追加"
+      >
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-1.5 text-sm font-medium text-[#993C1D]">
+            <PenLine size={14} strokeWidth={1} />
+            今日の記録
+          </div>
+          <InputField
+            label="タイトル"
+            name="title"
+            data-testid="log-title-input"
+            placeholder="例：朝の体調チェック"
+            required
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <TextAreaField
+            label="体調メモ"
+            name="memo"
+            data-testid="log-memo-input"
+            placeholder="例：食欲あり、元気です"
+            value={memo}
+            onChange={(e) => setMemo(e.target.value)}
+          />
+          <ImageUploader
+            key={imageUploaderKey}
+            label="写真"
+            onFileSelect={(file) => setImageFile(file)}
+          />
+          {error && <p className="text-xs text-red-500">{error}</p>}
+          <PrimaryButton
+            data-testid="ui003-post-log-button"
+            className="w-full bg-[#D85A30] text-white hover:bg-[#D85A30] hover:opacity-85"
+            onClick={handleSubmit}
+            disabled={isSubmitDisabled}
+          >
+            {isSubmitting ? "投稿中..." : "投稿する"}
+          </PrimaryButton>
+        </div>
+      </Modal>
+
       <Modal
         open={isDeleteModalOpen}
         onOpenChange={(open) => setIsDeleteModalOpen(open)}
@@ -287,11 +356,8 @@ export default function TimelinePage() {
           </div>
         }
       />
- 
-      <div className="fixed bottom-0 left-0 right-0">
-        <BottomNavigation />
-      </div>
+
+      <BottomNavigation />
     </div>
   );
 }
- 
