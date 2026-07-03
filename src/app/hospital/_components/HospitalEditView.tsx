@@ -21,6 +21,8 @@ type HospitalEditViewProps = {
   errors: FieldErrors<HospitalFormValues>;
   onHospitalCardSelect: (file: File | null) => void;
   onInsuranceCardSelect: (file: File | null) => void;
+  onHospitalCardRemove: () => void;
+  onInsuranceCardRemove: () => void;
   saveError: string | null;
   isSubmitting: boolean;
   onCancel: () => void;
@@ -33,6 +35,8 @@ export function HospitalEditView({
   errors,
   onHospitalCardSelect,
   onInsuranceCardSelect,
+  onHospitalCardRemove,
+  onInsuranceCardRemove,
   saveError,
   isSubmitting,
   onCancel,
@@ -46,6 +50,7 @@ export function HospitalEditView({
             data-testid="hospital-name-input"
             required
             placeholder="例：〇〇動物病院"
+            className="border-[#a8825f] placeholder:text-[#8a6d54]"
             {...register("hospital_name")}
             error={errors.hospital_name?.message}
           />
@@ -57,6 +62,7 @@ export function HospitalEditView({
             type="tel"
             inputMode="numeric"
             placeholder="0312345678"
+            className="border-[#a8825f] placeholder:text-[#8a6d54]"
             {...register("hospital_phone")}
             error={errors.hospital_phone?.message}
           />
@@ -66,6 +72,7 @@ export function HospitalEditView({
             data-testid="hospital-address-input"
             required
             placeholder="例：東京都渋谷区..."
+            className="border-[#a8825f] placeholder:text-[#8a6d54]"
             {...register("hospital_address")}
             error={errors.hospital_address?.message}
           />
@@ -73,15 +80,17 @@ export function HospitalEditView({
 
         <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4 flex flex-col gap-4">
           <ImageUploader
-            key={`hospital-${pet?.id}`}
+            key={`${pet?.id}-hospital-card`}
             label="診察券"
             onFileSelect={onHospitalCardSelect}
+            onRemove={onHospitalCardRemove}
             initialImageUrl={pet?.hospital_card_image_url ?? undefined}
           />
           <ImageUploader
-            key={`insurance-${pet?.id}`}
+            key={`${pet?.id}-insurance-card`}
             label="保険証"
             onFileSelect={onInsuranceCardSelect}
+            onRemove={onInsuranceCardRemove}
             initialImageUrl={pet?.insurance_card_image_url ?? undefined}
           />
         </div>
@@ -100,7 +109,7 @@ export function HospitalEditView({
             type="submit"
             data-testid="hospital-save-button"
             disabled={isSubmitting}
-            className="h-12 flex-1 bg-[#D85A30] text-white hover:bg-[#D85A30] hover:opacity-85"
+            className="h-12 flex-1"
           >
             {isSubmitting ? <LoadingSpinner size="sm" /> : "保存する"}
           </PrimaryButton>
