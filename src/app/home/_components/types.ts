@@ -3,4 +3,4 @@
 // home画面内の各ファイルは引き続き ./types からimportできるようにする）
 // ============================================================
 
-export type { Profile, Pet, Todo, Schedule } from "@/types";
+export type { Profile, Pet, Todo, Schedule, Member } from "@/types";

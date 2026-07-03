@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { supabase } from "@/lib/supabase";
 import { getSelectedPetId, clearSelectedPetId } from "@/lib/petStorage";
-import type { Profile, Pet, Todo, Schedule } from "./types";
+import type { Profile, Pet, Todo, Schedule, Member } from "./types";
 
 export function useCareHomeData() {
   const router = useRouter();
@@ -16,8 +16,14 @@ export function useCareHomeData() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [petList, setPetList] = useState<Pet[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const membersRef = useRef<Member[]>([]);
+  useEffect(() => {
+    membersRef.current = members;
+  }, [members]);
 
   // ------------------------------------------------------------
   // データ取得（ステップ1：土台作り）
@@ -43,12 +49,13 @@ export function useCareHomeData() {
         }
 
         //ペット・ToDo・スケジュール・ペット一覧を並行取得
-        const [petData, todosData, schedulesData, petListData] =
+        const [petData, todosData, schedulesData, petListData, membersData] =
           await Promise.all([
             apiFetch<Pet>(`/api/pets/${profileData.pet_id}`),
             apiFetch<Todo[]>("/api/todos"),
             apiFetch<Schedule[]>("/api/schedules"),
             apiFetch<Pet[]>("/api/pets"),
+            apiFetch<Member[]>(`/api/pets/${profileData.pet_id}/members`),
           ]);
 
         //localStorageに保存されたペットIDがあればそちらを優先
@@ -57,12 +64,15 @@ export function useCareHomeData() {
           try {
             const savedPetData = await apiFetch<Pet>(`/api/pets/${savedPetId}`);
             setPet(savedPetData);
+            const savedMembersData = await apiFetch<Member[]>(`/api/pets/${savedPetId}/members`);
+            setMembers(savedMembersData ?? []);
           } catch {
             setPet(petData);
             clearSelectedPetId();
           }
         } else {
           setPet(petData);
+          setMembers(membersData ?? []);
         }
         setTodos(todosData ?? []);
         setSchedules(schedulesData ?? []);
@@ -127,11 +137,18 @@ export function useCareHomeData() {
             setTodos((prevTodos) =>
               prevTodos.map((todo) => {
                 if (todo.id !== updatedTodo.id) return todo;
+
+                const resolvedMember = updatedTodo.completed_by_id
+                  ? membersRef.current.find((m) => m.id === updatedTodo.completed_by_id)
+                  : null;
+
                 return {
                   ...todo,
                   ...updatedTodo,
                   completed_by: updatedTodo.is_completed
-                    ? todo.completed_by
+                    ? (resolvedMember
+                        ? { display_name: resolvedMember.display_name }
+                        : todo.completed_by)
                     : null,
                 };
               }),
@@ -212,6 +229,8 @@ export function useCareHomeData() {
     schedules,
     setSchedules,
     petList,
+    members,
+    setMembers,
     isLoading,
     loadError,
     isMounted,
