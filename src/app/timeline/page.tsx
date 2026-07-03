@@ -9,7 +9,7 @@ import { ImageUploader } from "@/components/common/ImageUploader";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { Modal } from "@/components/common/Modal";
 import { apiFetch, ApiError } from "@/lib/api-client";
-import type { Pet } from "@/types";
+import type { Pet, Member } from "@/types";
 import { uploadPetImage } from "@/lib/petImageUpload";
 import { PetSwitchModal } from "@/components/common/PetSwitchModal";
 import { getSelectedPetId, setSelectedPetId } from "@/lib/petStorage";
@@ -41,6 +41,11 @@ export default function TimelinePage() {
   const [petList, setPetList] = useState<Pet[]>([]);
   const [isPetSwitchModalOpen, setIsPetSwitchModalOpen] = useState(false);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
+
+  // ★display_name表示用：メンバーID → 名前 のマップ
+  const [memberMap, setMemberMap] = useState<Map<string, string | null>>(
+    new Map(),
+  );
 
   useEffect(() => {
     const fetchLogs = async () => {
@@ -80,6 +85,25 @@ export default function TimelinePage() {
     fetchLogs();
   }, []);
 
+  // ★display_name表示用：petが確定したら家族メンバー一覧を取得してマップ化
+  // TODO: GET /api/pets/:petId/members ができたら fetchPetMembersMock を
+  //       本物のAPI呼び出しに差し替える（呼び出し側のこのuseEffectは変更不要のはず）
+  // 変更後
+  useEffect(() => {
+    if (!pet?.id) return;
+
+    const fetchMembers = async () => {
+      try {
+        const members = await apiFetch<Member[]>(`/api/pets/${pet.id}/members`);
+        setMemberMap(new Map(members.map((m) => [m.id, m.display_name])));
+      } catch (err) {
+        console.error("家族メンバー取得失敗:", err);
+      }
+    };
+
+    fetchMembers();
+  }, [pet?.id]);
+
   useEffect(() => {
     if (!pet?.id) return;
 
@@ -118,6 +142,17 @@ export default function TimelinePage() {
       supabase.removeChannel(channel);
     };
   }, [pet?.id]);
+
+  // ★display_name表示用：created_by_idから頭文字を出すヘルパー
+  // memberMapに名前があればその頭文字、なければ従来通り created_by_id の頭文字にフォールバック
+  const getAvatarInitial = (createdById: string | null) => {
+    if (!createdById) return "?";
+    const displayName = memberMap.get(createdById);
+    if (displayName) {
+      return displayName.slice(0, 1).toUpperCase();
+    }
+    return createdById.slice(0, 1).toUpperCase();
+  };
 
   const isSubmitDisabled = title.trim() === "" || isSubmitting;
 
@@ -235,7 +270,7 @@ export default function TimelinePage() {
             >
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-7 h-7 rounded-full bg-[#FAECE7] flex items-center justify-center text-xs font-medium text-[#993C1D]">
-                  {log.created_by_id?.slice(0, 1).toUpperCase() ?? "?"}
+                  {getAvatarInitial(log.created_by_id)}
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">
