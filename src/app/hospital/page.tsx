@@ -61,6 +61,12 @@ export default function HospitalPage() {
   const [hospitalCardFile, setHospitalCardFile] = useState<File | null>(null);
   const [insuranceCardFile, setInsuranceCardFile] = useState<File | null>(null);
 
+  // 「削除」ボタンで既存画像が消された状態かどうか。
+  // 新しいファイルの選択とは別に管理する必要がある
+  // （新規選択なし＝変更なし、削除＝nullで保存、を区別するため）。
+  const [isHospitalCardRemoved, setIsHospitalCardRemoved] = useState(false);
+  const [isInsuranceCardRemoved, setIsInsuranceCardRemoved] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -133,9 +139,12 @@ export default function HospitalPage() {
       hospital_phone: selectedPet.hospital_phone ?? "",
       hospital_address: selectedPet.hospital_address ?? "",
     });
-    // 切り替え前のペットで選択していた画像ファイルが残らないようにリセットする
+    // 切り替え前のペットで選択していた画像ファイル・削除フラグが
+    // 残らないようにリセットする
     setHospitalCardFile(null);
     setInsuranceCardFile(null);
+    setIsHospitalCardRemoved(false);
+    setIsInsuranceCardRemoved(false);
     // ペットを切り替えたら編集モードは強制終了し、誤って別ペットの情報を編集しないようにする
     setIsEditing(false);
     setIsPetSwitchModalOpen(false);
@@ -151,8 +160,22 @@ export default function HospitalPage() {
     }
     setHospitalCardFile(null);
     setInsuranceCardFile(null);
+    setIsHospitalCardRemoved(false);
+    setIsInsuranceCardRemoved(false);
     setSaveError(null);
     setIsEditing(false);
+  };
+
+  // 診察券・保険証の「削除」ボタンが押された時のハンドラー。
+  // 新規ファイル選択とは独立して「削除された」ことを記録する。
+  const handleHospitalCardRemove = () => {
+    setHospitalCardFile(null);
+    setIsHospitalCardRemoved(true);
+  };
+
+  const handleInsuranceCardRemove = () => {
+    setInsuranceCardFile(null);
+    setIsInsuranceCardRemoved(true);
   };
 
   const onSubmit = async (values: HospitalFormValues) => {
@@ -163,9 +186,11 @@ export default function HospitalPage() {
 
     try {
       // ① 画像が新たに選択されていればアップロードし、URLを取得する。
-      //    選択されていなければ既存のURL（変更なし）をそのまま使う。
-      let hospitalCardUrl = pet.hospital_card_image_url;
-      let insuranceCardUrl = pet.insurance_card_image_url;
+      //    「削除」が押されていればnullにする。
+      //    どちらでもなければ既存のURL（変更なし）をそのまま使う。
+      let hospitalCardUrl: string | null = pet.hospital_card_image_url ?? null;
+      let insuranceCardUrl: string | null =
+        pet.insurance_card_image_url ?? null;
 
       if (hospitalCardFile) {
         hospitalCardUrl = await uploadPetImage(
@@ -173,30 +198,39 @@ export default function HospitalPage() {
           hospitalCardFile,
           "hospital-card",
         );
+      } else if (isHospitalCardRemoved) {
+        hospitalCardUrl = null;
       }
+
       if (insuranceCardFile) {
         insuranceCardUrl = await uploadPetImage(
           pet.id,
           insuranceCardFile,
           "insurance-card",
         );
+      } else if (isInsuranceCardRemoved) {
+        insuranceCardUrl = null;
       }
 
       // ② テキスト項目＋画像URLをまとめてPATCH
+      //    ⚠️ `?? undefined` にすると削除時のnullがJSONから消えてしまい
+      //    バックエンドが「変更なし」と解釈してしまうため、nullはそのまま送る。
       const updatedPet = await apiFetch<Pet>(`/api/pets/${pet.id}`, {
         method: "PATCH",
         body: JSON.stringify({
           hospital_name: values.hospital_name,
           hospital_phone: values.hospital_phone,
           hospital_address: values.hospital_address,
-          hospital_card_image_url: hospitalCardUrl ?? undefined,
-          insurance_card_image_url: insuranceCardUrl ?? undefined,
+          hospital_card_image_url: hospitalCardUrl,
+          insurance_card_image_url: insuranceCardUrl,
         }),
       });
 
       setPet(updatedPet);
       setHospitalCardFile(null);
       setInsuranceCardFile(null);
+      setIsHospitalCardRemoved(false);
+      setIsInsuranceCardRemoved(false);
       setIsEditing(false);
     } catch (err) {
       setSaveError(
@@ -265,6 +299,8 @@ export default function HospitalPage() {
             errors={errors}
             onHospitalCardSelect={setHospitalCardFile}
             onInsuranceCardSelect={setInsuranceCardFile}
+            onHospitalCardRemove={handleHospitalCardRemove}
+            onInsuranceCardRemove={handleInsuranceCardRemove}
             saveError={saveError}
             isSubmitting={isSubmitting}
             onCancel={handleCancelEdit}

@@ -24,5 +24,5 @@ export async function uploadPetImage(
   }
 
   const { data } = supabase.storage.from("pet-images").getPublicUrl(path);
-  return data.publicUrl;
+  return `${data.publicUrl}?t=${Date.now()}`;
 }
