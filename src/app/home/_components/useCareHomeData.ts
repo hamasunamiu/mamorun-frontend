@@ -102,7 +102,10 @@ export function useCareHomeData() {
   }, []);
 
   // ------------------------------------------------------------
-  // Supabase Realtime：todosテーブルの変更を監視
+  // Supabase Realtime：invitationsテーブルの変更を監視
+  // 新規メンバーが招待を受諾した瞬間（is_used: false→true）を検知し、
+  // membersを再取得する。招待受諾時は完全なprofilesレコードがpayloadに
+  // 含まれないため、再fetchで対応する（todos/schedulesとは異なる方針）。
   // ------------------------------------------------------------
 
   useEffect(() => {
@@ -113,51 +116,29 @@ export function useCareHomeData() {
     if (!pet?.id) return;
 
     const channel = supabase
-      .channel(`todos-changes-${pet.id}`)
+      .channel(`invitations-changes-${pet.id}`)
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "UPDATE",
           schema: "public",
-          table: "todos",
+          table: "invitations",
           filter: `pet_id=eq.${pet.id}`,
         },
         (payload) => {
-          if (payload.eventType === "INSERT") {
-            const newTodo = payload.new as Todo;
-            setTodos((prevTodos) => {
-              // 同じIDが既に存在する場合は重複追加しない（自分自身の操作分との重複防止）
-              if (prevTodos.some((todo) => todo.id === newTodo.id)) {
-                return prevTodos;
-              }
-              return [...prevTodos, newTodo];
-            });
-          } else if (payload.eventType === "UPDATE") {
-            const updatedTodo = payload.new as Todo;
-            setTodos((prevTodos) =>
-              prevTodos.map((todo) => {
-                if (todo.id !== updatedTodo.id) return todo;
+          const oldRow = payload.old as { is_used?: boolean };
+          const newRow = payload.old as { is_used?: boolean };
 
-                const resolvedMember = updatedTodo.completed_by_id
-                  ? membersRef.current.find((m) => m.id === updatedTodo.completed_by_id)
-                  : null;
-
-                return {
-                  ...todo,
-                  ...updatedTodo,
-                  completed_by: updatedTodo.is_completed
-                    ? (resolvedMember
-                        ? { display_name: resolvedMember.display_name }
-                        : todo.completed_by)
-                    : null,
-                };
-              }),
-            );
-          } else if (payload.eventType === "DELETE") {
-            const deletedTodo = payload.old as Todo;
-            setTodos((prevTodos) =>
-              prevTodos.filter((todo) => todo.id !== deletedTodo.id),
-            );
+          //is_usedがfalse→trueに変わった瞬間（＝招待受諾成功の瞬間）のみ反応
+          if (oldRow.is_used === false && newRow.is_used === true) {
+            apiFetch<Member[]>(`/api/pets/${pet.id}/members`)
+              .then((membersData) => {
+                setMembers(membersData ?? []);
+              })
+              .catch(() => {
+                //メンバー再取得に失敗しても致命的ではないため、
+                //静かに失敗させる（次回リロード時に直状態へ復帰する）
+              });
           }
         },
       )
