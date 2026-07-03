@@ -164,7 +164,7 @@ export default function AiChatPage() {
         )}
       </div>
 
-      {/* メッセージ一覧（★スクロール領域） */}
+      {/* メッセージ一覧（スクロール領域） */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
         {messages.map((message, index) => (
           <div
@@ -204,8 +204,8 @@ export default function AiChatPage() {
         <div ref={bottomRef} />
       </div>
 
-      {/* 入力エリア（★fixedをやめて通常配置に変更） */}
-      <div className="flex-shrink-0 bg-white border-t border-[#e0d6ce] px-4 py-3">
+      {/* 入力エリア（BottomNavigationの高さ分の余白を確保） */}
+      <div className="flex-shrink-0 bg-white border-t border-[#e0d6ce] px-4 py-3 pb-[calc(0.75rem+64px)]">
         <div className="flex items-end gap-2">
           <textarea
             data-testid="ui004-chat-input"
