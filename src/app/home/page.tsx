@@ -203,7 +203,10 @@ export default function CareHomePage() {
       try {
         await apiFetch("/api/todos", {
           method: "POST",
-          body: JSON.stringify({ task_name: values.taskName }),
+          body: JSON.stringify({
+            task_name: values.taskName,
+            petId: pet?.id,
+          }),
         });
       } catch (err) {
         console.error("ToDo作成失敗:", err);
@@ -282,6 +285,7 @@ export default function CareHomePage() {
             title: values.title,
             scheduled_content: values.scheduledContent || undefined,
             scheduled_date: values.scheduledDate,
+            petId: pet?.id,
           }),
         });
       } catch (err) {

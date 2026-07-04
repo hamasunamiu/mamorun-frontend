@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import CareHomePage from "../page";
 import { useCareHomeData } from "../_components/useCareHomeData";
 import { apiFetch } from "@/lib/api-client";
-import type { Pet, Todo, Schedule, Profile } from "@/types";
+import type { Pet, Todo, Schedule, Profile, Member } from "@/types";
 
 // useCareHomeDataを丸ごとモック化する
 // Realtime同期自体の検証はこのテストの対象外とし、
@@ -60,6 +60,17 @@ const mockPet: Pet = {
   created_at: "2026-01-01T00:00:00.000Z",
 };
 
+const mockMembers: Member[] = [
+  {
+    id: "member-1",
+    display_name: "まの",
+    is_premium: false,
+    pet_id: "pet-1",
+    notification_time: "morning",
+    created_at: "2026-01-01T00:00:00.000Z",
+  },
+];
+
 const mockTodo: Todo = {
   id: "todo-1",
   pet_id: "pet-1",
@@ -96,6 +107,8 @@ function createMockHookReturn(
     schedules: [mockSchedule],
     setSchedules: jest.fn(),
     petList: [mockPet],
+    members: mockMembers,
+    setMembers: jest.fn(),
     isLoading: false,
     loadError: null,
     isMounted: true,
