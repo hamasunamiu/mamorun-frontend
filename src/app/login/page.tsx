@@ -217,14 +217,14 @@ export default function LoginPage() {
           type="button"
           onClick={() => setIsInviteModalOpen(true)}
           aria-haspopup="dialog"
-          className="flex h-14 w-full items-center justify-center gap-2 rounded-3xl border border-[#D8C0A8] bg-white text-sm font-semibold text-accent-foreground"
+          className="flex h-14 w-full shrink-0 items-center justify-center gap-2 rounded-3xl border border-[#D8C0A8] bg-white text-sm font-semibold text-accent-foreground"
         >
           <LinkIcon className="h-4 w-4" aria-hidden="true" />
           招待URLをお持ちの方
         </button>
 
         {/* 安心・安全のために */}
-        <div className="relative mt-6 overflow-hidden rounded-2xl bg-[#FDF1E2] p-4">
+        <div className="relative mt-6 shrink-0 overflow-hidden rounded-2xl bg-[#FDF1E2] p-4">
           <div className="flex items-start gap-3">
             <ShieldCheck
               className="mt-0.5 h-5 w-5 shrink-0 text-accent-foreground"
