@@ -213,7 +213,7 @@ describe("CareHomePage", () => {
 
       expect(apiFetch).toHaveBeenCalledWith("/api/todos", {
         method: "POST",
-        body: JSON.stringify({ task_name: "お昼ごはん" }),
+        body: JSON.stringify({ task_name: "お昼ごはん", petId: "pet-1" }),
       });
 
       await waitFor(() => {
@@ -437,6 +437,7 @@ describe("CareHomePage", () => {
             title: "フィラリア薬",
             scheduled_content: "毎月15日に投与",
             scheduled_date: "2026-07-15",
+            petId: "pet-1",
           }),
         });
       });
@@ -584,7 +585,7 @@ describe("CareHomePage", () => {
 
       test("UT-F-229: ペットを選択するとswitchToPetが呼ばれModalが閉じる", async () => {
         const user = userEvent.setup();
-        const mockSwitchToPet = jest.fn();
+        const mockSwitchToPet = jest.fn().mockResolvedValue(true);
         const secondPet = {
           ...mockPet,
           id: "pet-2",
