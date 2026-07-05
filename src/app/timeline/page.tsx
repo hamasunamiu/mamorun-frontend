@@ -9,7 +9,7 @@ import { ImageUploader } from "@/components/common/ImageUploader";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { Modal } from "@/components/common/Modal";
 import { apiFetch, ApiError } from "@/lib/api-client";
-import type { Pet } from "@/types";
+import type { Pet, Member } from "@/types";
 import { uploadPetImage } from "@/lib/petImageUpload";
 import { PetSwitchModal } from "@/components/common/PetSwitchModal";
 import { getSelectedPetId, setSelectedPetId } from "@/lib/petStorage";
@@ -41,6 +41,11 @@ export default function TimelinePage() {
   const [petList, setPetList] = useState<Pet[]>([]);
   const [isPetSwitchModalOpen, setIsPetSwitchModalOpen] = useState(false);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [memberMap, setMemberMap] = useState<Map<string, string | null>>(
+    new Map(),
+  );
 
   useEffect(() => {
     const fetchLogs = async () => {
@@ -57,6 +62,7 @@ export default function TimelinePage() {
         setError("体調ログの取得に失敗しました。");
       }
 
+      // fetchLogs内、プロフィール取得結果の分岐を修正
       if (profileResult.status === "fulfilled") {
         setCurrentUserId(profileResult.value.id);
 
@@ -73,12 +79,30 @@ export default function TimelinePage() {
             console.error("ペット情報取得失敗:", err);
           }
         }
+      } else {
+        // ★プロフィール取得自体が失敗した場合は致命的なエラーとして扱う
+        setLoadError("情報の読み込みに失敗しました。もう一度お試しください。");
       }
 
       setIsLoading(false);
     };
     fetchLogs();
   }, []);
+
+  useEffect(() => {
+    if (!pet?.id) return;
+
+    const fetchMembers = async () => {
+      try {
+        const members = await apiFetch<Member[]>(`/api/pets/${pet.id}/members`);
+        setMemberMap(new Map(members.map((m) => [m.id, m.display_name])));
+      } catch (err) {
+        console.error("家族メンバー取得失敗:", err);
+      }
+    };
+
+    fetchMembers();
+  }, [pet?.id]);
 
   useEffect(() => {
     if (!pet?.id) return;
@@ -118,6 +142,15 @@ export default function TimelinePage() {
       supabase.removeChannel(channel);
     };
   }, [pet?.id]);
+
+  const getAvatarInitial = (createdById: string | null) => {
+    if (!createdById) return "?";
+    const displayName = memberMap.get(createdById);
+    if (displayName) {
+      return displayName.slice(0, 1).toUpperCase();
+    }
+    return createdById.slice(0, 1).toUpperCase();
+  };
 
   const isSubmitDisabled = title.trim() === "" || isSubmitting;
 
@@ -190,14 +223,10 @@ export default function TimelinePage() {
 
   return (
     <div className="mx-auto flex h-dvh w-full max-w-[430px] flex-col overflow-hidden bg-[#FAF8F6]">
+      {/* ★home画面と統一：dateLabelを渡さないことでヘッダー高さを揃える */}
       <Header
         petName={pet?.name}
         petSpecies={pet?.species}
-        dateLabel={new Date().toLocaleDateString("ja-JP", {
-          month: "long",
-          day: "numeric",
-          weekday: "short",
-        })}
         onPetSwitch={() => {
           if (petList.length > 1) {
             setIsPetSwitchModalOpen(true);
@@ -219,26 +248,39 @@ export default function TimelinePage() {
 
       {/* 過去の投稿一覧（スクロールエリア） */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-        {isLoading ? (
-          <div className="text-center text-sm text-gray-400 py-8">
+        {loadError ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+            <p className="text-sm text-muted-foreground">{loadError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 rounded-lg bg-primary text-white text-sm"
+            >
+              再読み込み
+            </button>
+          </div>
+        ) : isLoading ? (
+          <div className="text-center text-sm text-muted-foreground py-8">
             読み込み中...
           </div>
         ) : logs.length === 0 ? (
-          <div className="text-center text-sm text-gray-400 py-8">
+          <div className="text-center text-sm text-muted-foreground py-8">
             まだ記録がありません
           </div>
         ) : (
           logs.map((log) => (
             <div
               key={log.id}
-              className="bg-white rounded-2xl border border-[#e0d6ce] p-4"
+              // ★home画面のTodoCardと統一：枠線を削除し bg-white rounded-2xl のみに
+              className="bg-white rounded-2xl p-4"
             >
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 rounded-full bg-[#FAECE7] flex items-center justify-center text-xs font-medium text-[#993C1D]">
-                  {log.created_by_id?.slice(0, 1).toUpperCase() ?? "?"}
+                {/* ★アバター：デザイントークン（accent）に統一 */}
+                <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center text-xs font-medium text-accent-foreground">
+                  {getAvatarInitial(log.created_by_id)}
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400">
+                  {/* ★日時の文字色：ハードコードからトークンへ */}
+                  <p className="text-xs text-muted-foreground">
                     {new Date(log.created_at).toLocaleDateString("ja-JP", {
                       month: "long",
                       day: "numeric",
@@ -248,11 +290,11 @@ export default function TimelinePage() {
                   </p>
                 </div>
               </div>
-              <p className="text-sm font-medium text-gray-800 mb-1">
+              <p className="text-base font-semibold text-[#6E5849] mb-1">
                 {log.title}
               </p>
               {log.attached_image_url && (
-                <div className="w-full max-h-64 bg-[#f5f0ea] rounded-lg mb-2 flex items-center justify-center overflow-hidden">
+                <div className="w-full max-h-64 bg-muted rounded-lg mb-2 flex items-center justify-center overflow-hidden">
                   <img
                     src={log.attached_image_url}
                     alt="添付画像"
@@ -261,14 +303,14 @@ export default function TimelinePage() {
                 </div>
               )}
               {log.detail_memo && (
-                <p className="text-sm text-gray-500 leading-relaxed mb-3">
+                <p className="text-sm text-muted-foreground leading-relaxed mb-3">
                   {log.detail_memo}
                 </p>
               )}
               {currentUserId === log.created_by_id && (
-                <div className="flex justify-end border-t border-[#f0e8e0] pt-2">
+                <div className="flex justify-end border-t border-border pt-2">
                   <button
-                    className="flex items-center gap-1 text-xs text-gray-400"
+                    className="flex items-center gap-1 text-xs text-gray-500"
                     onClick={() => handleDeleteClick(log.id)}
                   >
                     <Trash2 size={12} strokeWidth={1} />
@@ -296,10 +338,7 @@ export default function TimelinePage() {
         title="今日の記録を追加"
       >
         <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-1.5 text-sm font-medium text-[#993C1D]">
-            <PenLine size={14} strokeWidth={1} />
-            今日の記録
-          </div>
+          {/* ★見出しの色をトークン（foreground）に統一 */}
           <InputField
             label="タイトル"
             name="title"
@@ -323,9 +362,10 @@ export default function TimelinePage() {
             onFileSelect={(file) => setImageFile(file)}
           />
           {error && <p className="text-xs text-red-500">{error}</p>}
+          {/* ★home画面のTodoFormModalと統一：色をPrimaryButtonのデフォルトに任せる */}
           <PrimaryButton
             data-testid="ui003-post-log-button"
-            className="w-full bg-[#D85A30] text-white hover:bg-[#D85A30] hover:opacity-85"
+            className="w-full h-12 rounded-2xl"
             onClick={handleSubmit}
             disabled={isSubmitDisabled}
           >
@@ -342,13 +382,13 @@ export default function TimelinePage() {
         footer={
           <div className="flex gap-2 w-full">
             <button
-              className="flex-1 py-2 rounded-lg border border-[#e0d6ce] text-sm text-gray-500"
+              className="h-11 flex-1 rounded-2xl border border-border text-sm font-medium text-foreground"
               onClick={() => setIsDeleteModalOpen(false)}
             >
               キャンセル
             </button>
             <button
-              className="flex-1 py-2 rounded-lg bg-red-500 text-white text-sm"
+              className="h-11 flex-1 rounded-2xl bg-[#C1583D] text-sm font-medium text-white hover:bg-[#A84A32]"
               onClick={handleDeleteConfirm}
             >
               削除する
