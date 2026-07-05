@@ -267,6 +267,7 @@ export function useCareHomeData() {
           filter: `pet_id=eq.${pet.id}`,
         },
         (payload) => {
+          console.log("*schedules realtime payload:", payload);
           if (payload.eventType === "INSERT") {
             const newSchedule = payload.new as Schedule;
             setSchedules((prevSchedules) => {
