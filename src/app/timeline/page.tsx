@@ -118,6 +118,7 @@ export default function TimelinePage() {
           filter: `pet_id=eq.${pet.id}`,
         },
         (payload) => {
+          console.log("★health_logs realtime event:", payload);
           if (payload.eventType === "INSERT") {
             const newLog = payload.new as HealthLog;
             setLogs((prevLogs) => {
@@ -203,6 +204,9 @@ export default function TimelinePage() {
       await apiFetch(`/api/health-logs/${deleteTargetId}`, {
         method: "DELETE",
       });
+      setLogs((prevLogs) =>
+        prevLogs.filter((log) => log.id !== deleteTargetId)
+      ); 
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
