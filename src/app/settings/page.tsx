@@ -169,23 +169,31 @@ function SettingsPageContent() {
   };
 
   const handlePremiumCancel = async () => {
+    // ★Stripe解約の成否を先に確定させる
     try {
-      // ★両方のAPI呼び出しが成功するまでstateは更新しない
-      //   （途中で失敗した場合に「無料表示だがLINE連携は残ったまま」という
-      //   状態不整合が起きるのを防ぐため）
       await apiFetch("/api/stripe/cancel", { method: "POST" });
+    } catch (err) {
+      alert("解約処理に失敗しました。もう一度お試しください。");
+      return;
+    }
+
+    // ★Stripe解約は成功済み。ここから先で失敗しても解約自体はロールバックされない
+    //   （サーバー側が2つの独立したAPIのため）。根本対応はバックエンドに依頼中。
+    //   フロント側では、失敗時にユーザーへ手動対応を案内する
+    try {
       await apiFetch("/api/profiles/me", {
         method: "PATCH",
         body: JSON.stringify({ line_user_id: null }),
       });
-
-      // ★両方成功した後にまとめてUIを更新
-      setIsPremium(false);
       setIsLineLinked(false);
-      setIsPremiumCancelModalOpen(false);
     } catch (err) {
-      alert("解約処理に失敗しました。");
+      alert(
+        "プレミアムプランの解約手続きは完了しましたが、LINE連携の解除処理でエラーが発生しました。お手数ですが、時間を置いてページを再読み込みしてください。解消しない場合はサポートまでお問い合わせください。",
+      );
     }
+
+    setIsPremium(false);
+    setIsPremiumCancelModalOpen(false);
   };
 
   const handleSaveNotificationTime = async () => {
@@ -256,7 +264,7 @@ function SettingsPageContent() {
             onClick={() => setIsPetEditModalOpen(true)}
           >
             <div className="flex items-center gap-3 text-sm text-foreground">
-              <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center text-accent-foreground">
                 <PenLine size={16} strokeWidth={1} />
               </div>
               ペット情報を編集する
@@ -269,7 +277,7 @@ function SettingsPageContent() {
             onClick={() => setIsPetModalOpen(true)}
           >
             <div className="flex items-center gap-3 text-sm text-foreground">
-              <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center text-accent-foreground">
                 <Plus size={16} strokeWidth={1} />
               </div>
               新しいペットを追加する
@@ -290,7 +298,7 @@ function SettingsPageContent() {
           </p>
           <div className="flex items-center justify-between py-1 text-accent-foreground">
             <div className="flex items-center gap-3 text-sm text-foreground">
-              <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center text-accent-foreground">
                 <Users size={16} strokeWidth={1} />
               </div>
               招待URLを発行する
