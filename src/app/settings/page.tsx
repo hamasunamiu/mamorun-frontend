@@ -170,14 +170,17 @@ function SettingsPageContent() {
 
   const handlePremiumCancel = async () => {
     try {
+      // ★両方のAPI呼び出しが成功するまでstateは更新しない
+      //   （途中で失敗した場合に「無料表示だがLINE連携は残ったまま」という
+      //   状態不整合が起きるのを防ぐため）
       await apiFetch("/api/stripe/cancel", { method: "POST" });
-      setIsPremium(false);
-      // ★プレミアム解約時はLINE連携も合わせて解除する
-      // （LINE通知はプレミアム限定機能のため、解約後に連携だけ残るのはUXとして不整合）
       await apiFetch("/api/profiles/me", {
         method: "PATCH",
         body: JSON.stringify({ line_user_id: null }),
       });
+
+      // ★両方成功した後にまとめてUIを更新
+      setIsPremium(false);
       setIsLineLinked(false);
       setIsPremiumCancelModalOpen(false);
     } catch (err) {
