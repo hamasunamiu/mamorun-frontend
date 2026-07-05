@@ -219,10 +219,19 @@ export default function TimelinePage() {
     }
   };
 
-  const handleSwitchPet = (selectedPet: Pet) => {
+  const handleSwitchPet = async (selectedPet: Pet) => {
     setPet(selectedPet);
     setSelectedPetId(selectedPet.id);
     setIsPetSwitchModalOpen(false);
+
+    try {
+      const logsData = await apiFetch<HealthLog[]>(
+        `/api/health-logs?petId=${selectedPet.id}`
+      );
+      setLogs(logsData ?? []);
+    } catch (err) {
+      console.error("ログ再取得失敗:", err);
+    }
   };
 
   return (
