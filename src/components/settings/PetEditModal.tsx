@@ -12,6 +12,7 @@ import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { Modal } from "@/components/common/Modal";
 import { supabase } from "@/lib/supabase";
+import { Dog, Cat } from "lucide-react";
 
 const petSchema = z.object({
   name: z
@@ -165,7 +166,7 @@ export function PetEditModal({
           name="species"
           render={({ field: f }) => (
             <ToggleOptionGroup
-              label="種類"
+              label="ペット"
               required
               value={f.value}
               onChange={f.onChange}
@@ -174,12 +175,12 @@ export function PetEditModal({
                 {
                   value: "dog",
                   label: "犬",
-                  icon: <Dog size={16} strokeWidth={1.5} />,
+                  icon: <Dog className="h-4 w-4" aria-hidden="true" />,
                 },
                 {
                   value: "cat",
                   label: "猫",
-                  icon: <Cat size={16} strokeWidth={1.5} />,
+                  icon: <Cat className="h-4 w-4" aria-hidden="true" />,
                 },
               ]}
               error={errors.species?.message}
@@ -219,7 +220,7 @@ export function PetEditModal({
           label="生年月日"
           required
           type="date"
-          className="border-[#a8825f]"
+          className="border-[#a8825f] register-date-input"
           {...register("birthday")}
           error={errors.birthday?.message}
         />
