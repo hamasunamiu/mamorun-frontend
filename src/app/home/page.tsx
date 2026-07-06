@@ -215,13 +215,15 @@ export default function CareHomePage() {
         if (values.isDaily && !existingTemplate) {
           // チェックON かつ テンプレートなし → 新規作成
           try {
-            await apiFetch("/api/todo-templates", {
+            const response = await apiFetch("/api/todo-templates", {
               method: "POST",
               body: JSON.stringify({
                 task_name: values.taskName,
                 pet_id: pet?.id,
               }),
             });
+            const newTemplate = (response as { data: TodoTemplate }).data;
+            setTodoTemplates((prev) => [...prev, newTemplate]);
           } catch (err) {
             console.error("テンプレート作成失敗:", err);
           }
@@ -231,6 +233,9 @@ export default function CareHomePage() {
             await apiFetch(`/api/todo-templates/${existingTemplate.id}`, {
               method: "DELETE",
             });
+            setTodoTemplates((prev) =>
+              prev.filter((t) => t.id !== existingTemplate.id),
+            );
           } catch (err) {
             console.error("テンプレート削除失敗:", err);
           }
@@ -250,13 +255,15 @@ export default function CareHomePage() {
 
         if (values.isDaily) {
           try {
-            await apiFetch("/api/todo-templates", {
+            const response = await apiFetch("/api/todo-templates", {
               method: "POST",
               body: JSON.stringify({
                 task_name: values.taskName,
                 pet_id: pet?.id,
               }),
             });
+            const newTemplate = (response as { data: TodoTemplate }).data;
+            setTodoTemplates((prev) => [...prev, newTemplate]);
           } catch (err) {
             console.error("テンプレート作成失敗:", err);
           }

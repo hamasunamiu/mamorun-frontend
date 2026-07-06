@@ -3,14 +3,7 @@ import userEvent from "@testing-library/user-event";
 import CareHomePage from "../page";
 import { useCareHomeData } from "../_components/useCareHomeData";
 import { apiFetch } from "@/lib/api-client";
-import type {
-  Pet,
-  Todo,
-  Schedule,
-  Profile,
-  Member,
-  TodoTemplate,
-} from "@/types";
+import type { Pet, Todo, Schedule, Profile, TodoTemplate } from "@/types";
 
 // useCareHomeDataを丸ごとモック化する
 // Realtime同期自体の検証はこのテストの対象外とし、
