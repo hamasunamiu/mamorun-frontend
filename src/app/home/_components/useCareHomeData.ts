@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { supabase } from "@/lib/supabase";
 import { getSelectedPetId, clearSelectedPetId } from "@/lib/petStorage";
-import type { Profile, Pet, Todo, Schedule, Member } from "./types";
+import type { Profile, Pet, Todo, Schedule, Member, TodoTemplate } from "./types";
 
 export function useCareHomeData() {
   const router = useRouter();
@@ -22,6 +22,7 @@ export function useCareHomeData() {
   const [isSwitching, setIsSwitching] = useState(false);
   const [switchError, setSwitchError] = useState<string | null>(null);
   const membersRef = useRef<Member[]>([]);
+  const [todoTemplates, setTodoTemplates] = useState<TodoTemplate[]>([]);
   useEffect(() => {
     membersRef.current = members;
   }, [members]);
@@ -44,13 +45,14 @@ export function useCareHomeData() {
           return;
         }
 
-        const [petData, todosData, schedulesData, petListData, membersData] =
+        const [petData, todosData, schedulesData, petListData, membersData, todoTemplatesData] =
           await Promise.all([
             apiFetch<Pet>(`/api/pets/${profileData.pet_id}`),
             apiFetch<Todo[]>("/api/todos"),
             apiFetch<Schedule[]>("/api/schedules"),
             apiFetch<Pet[]>("/api/pets"),
             apiFetch<Member[]>(`/api/pets/${profileData.pet_id}/members`),
+            apiFetch<TodoTemplate[]>("/api/todo-templates"),
           ]);
 
         const savedPetId = getSelectedPetId();
@@ -80,6 +82,7 @@ export function useCareHomeData() {
         setTodos(todosData ?? []);
         setSchedules(schedulesData ?? []);
         setPetList(petListData ?? []);
+        setTodoTemplates(todoTemplatesData ?? []);
       } catch (err) {
         setLoadError(
           err instanceof ApiError
@@ -114,16 +117,18 @@ export function useCareHomeData() {
     setSwitchError(null);
 
     try {
-      const [todosData, schedulesData, membersData] = await Promise.all([
+      const [todosData, schedulesData, membersData, todoTemplatesData] = await Promise.all([
         apiFetch<Todo[]>(`/api/todos?petId=${selectedPet.id}`),
         apiFetch<Schedule[]>(`/api/schedules?petId=${selectedPet.id}`),
         apiFetch<Member[]>(`/api/pets/${selectedPet.id}/members`),
+        apiFetch<TodoTemplate[]>(`/api/todo-templates?petId=${selectedPet.id}`),
       ]);
 
       setPet(selectedPet);
       setTodos(todosData ?? []);
       setSchedules(schedulesData ?? []);
       setMembers(membersData ?? []);
+      setTodoTemplates(todoTemplatesData ?? []);
       return true;
     } catch (err) {
       setSwitchError(
@@ -298,6 +303,50 @@ export function useCareHomeData() {
     };
   }, [pet?.id]);
 
+// ------------------------------------------------------------
+// Supabase Realtime：todo_templatesテーブルの変更を監視
+// ------------------------------------------------------------
+
+useEffect(() => {
+  if (!pet?.id) return;
+
+  const channel = supabase
+    .channel(`todo-templates-changes-${pet.id}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "todo_templates",
+        filter: `pet_id=eq.${pet.id}`,
+      },
+      (payload) => {
+        if (payload.eventType === "INSERT") {
+          const newTemplate = payload.new as TodoTemplate;
+          setTodoTemplates((prev) => {
+            if (prev.some((t) => t.id === newTemplate.id)) return prev;
+            return [...prev, newTemplate];
+          });
+        } else if (payload.eventType === "UPDATE") {
+          const updatedTemplate = payload.new as TodoTemplate;
+          setTodoTemplates((prev) =>
+            prev.map((t) => t.id === updatedTemplate.id ? updatedTemplate : t)
+          );
+        } else if (payload.eventType === "DELETE") {
+          const deletedTemplate = payload.old as TodoTemplate;
+          setTodoTemplates((prev) =>
+            prev.filter((t) => t.id !== deletedTemplate.id)
+          );
+        }
+      },
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [pet?.id]);
+
   return {
     profile,
     pet,
@@ -312,9 +361,10 @@ export function useCareHomeData() {
     isLoading,
     loadError,
     isMounted,
-    // ★追加
     switchToPet,
     isSwitching,
     switchError,
+    todoTemplates,
+    setTodoTemplates,
   };
 }
