@@ -10,7 +10,6 @@ type ScheduleSectionProps = {
   schedules: Schedule[];
   isMounted: boolean;
   onAddClick: () => void;
-  onToggle: (scheduleId: string) => void;
   onDeleteRequest: (schedule: Schedule) => void;
   onEdit: (schedule: Schedule) => void;
 };
@@ -19,7 +18,6 @@ export function ScheduleSection({
   schedules,
   isMounted,
   onAddClick,
-  onToggle,
   onDeleteRequest,
   onEdit,
 }: ScheduleSectionProps) {
@@ -57,8 +55,6 @@ export function ScheduleSection({
                   ? formatDaysUntil(schedule.scheduled_date, new Date())
                   : ""
               }
-              isCompleted={schedule.is_completed}
-              onToggle={() => onToggle(schedule.id)}
               onDelete={() => onDeleteRequest(schedule)}
               onEdit={() => onEdit(schedule)}
             />

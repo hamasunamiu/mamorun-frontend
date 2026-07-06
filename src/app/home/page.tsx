@@ -215,14 +215,16 @@ export default function CareHomePage() {
         if (values.isDaily && !existingTemplate) {
           // チェックON かつ テンプレートなし → 新規作成
           try {
-            const response = await apiFetch("/api/todo-templates", {
-              method: "POST",
-              body: JSON.stringify({
-                task_name: values.taskName,
-                pet_id: pet?.id,
-              }),
-            });
-            const newTemplate = (response as { data: TodoTemplate }).data;
+            const newTemplate = await apiFetch<TodoTemplate>(
+              "/api/todo-templates",
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  task_name: values.taskName,
+                  pet_id: pet?.id,
+                }),
+              },
+            );
             setTodoTemplates((prev) => [...prev, newTemplate]);
           } catch (err) {
             console.error("テンプレート作成失敗:", err);
@@ -255,14 +257,16 @@ export default function CareHomePage() {
 
         if (values.isDaily) {
           try {
-            const response = await apiFetch("/api/todo-templates", {
-              method: "POST",
-              body: JSON.stringify({
-                task_name: values.taskName,
-                pet_id: pet?.id,
-              }),
-            });
-            const newTemplate = (response as { data: TodoTemplate }).data;
+            const newTemplate = await apiFetch<TodoTemplate>(
+              "/api/todo-templates",
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  task_name: values.taskName,
+                  pet_id: pet?.id,
+                }),
+              },
+            );
             setTodoTemplates((prev) => [...prev, newTemplate]);
           } catch (err) {
             console.error("テンプレート作成失敗:", err);
@@ -305,20 +309,6 @@ export default function CareHomePage() {
       scheduledDate: schedule.scheduled_date,
     });
     scheduleModal.openForEdit(schedule.id);
-  };
-
-  const handleToggleSchedule = async (scheduleId: string) => {
-    const schedule = schedules.find((s) => s.id === scheduleId);
-    if (!schedule) return;
-
-    try {
-      await apiFetch(`/api/schedules/${scheduleId}`, {
-        method: "PATCH",
-        body: JSON.stringify({ is_completed: !schedule.is_completed }),
-      });
-    } catch (err) {
-      console.error("スケジュール完了切り替え失敗:", err);
-    }
   };
 
   // テンプレートON/OFF切り替え
@@ -477,7 +467,6 @@ export default function CareHomePage() {
           schedules={schedules}
           isMounted={isMounted}
           onAddClick={handleStartAddSchedule}
-          onToggle={handleToggleSchedule}
           onDeleteRequest={handleRequestDeleteSchedule}
           onEdit={handleStartEditSchedule}
         />
