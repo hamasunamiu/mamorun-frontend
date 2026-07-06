@@ -12,7 +12,6 @@ import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { Modal } from "@/components/common/Modal";
 import { supabase } from "@/lib/supabase";
-import { Dog, Cat } from "lucide-react";
 
 const petSchema = z.object({
   name: z
