@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { PenLine, Trash2, Plus } from "lucide-react";
+import { Trash2, Plus } from "lucide-react";
 import { Header } from "@/components/common/Header";
 import { BottomNavigation } from "@/components/common/BottomNavigation";
 import { InputField } from "@/components/common/InputField";
@@ -14,6 +14,7 @@ import { uploadPetImage } from "@/lib/petImageUpload";
 import { PetSwitchModal } from "@/components/common/PetSwitchModal";
 import { getSelectedPetId, setSelectedPetId } from "@/lib/petStorage";
 import { supabase } from "@/lib/supabase";
+import Image from "next/image";
 
 type HealthLog = {
   id: string;
@@ -87,7 +88,7 @@ export default function TimelinePage() {
           // ★petIdが決まってから体調ログを取得する
           await fetchLogsForPet(targetPetId);
         }
-      } catch (err) {
+      } catch {
         // ★プロフィール取得自体が失敗した場合は致命的なエラーとして扱う
         setLoadError("情報の読み込みに失敗しました。もう一度お試しください。");
       } finally {
@@ -316,9 +317,11 @@ export default function TimelinePage() {
               </p>
               {log.attached_image_url && (
                 <div className="w-full max-h-64 bg-muted rounded-lg mb-2 flex items-center justify-center overflow-hidden">
-                  <img
+                  <Image
                     src={log.attached_image_url}
                     alt="添付画像"
+                    width={400}
+                    height={256}
                     className="max-w-full max-h-64 object-contain"
                   />
                 </div>

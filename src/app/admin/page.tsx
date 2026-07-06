@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Users, PawPrint, Dog, Cat, Crown, CircleCheck } from "lucide-react";
+import { Users, PawPrint, Dog, Cat, Crown } from "lucide-react";
 import { Header } from "@/components/common/Header";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { Modal } from "@/components/common/Modal";
@@ -51,7 +51,7 @@ export default function AdminPage() {
 
   if (isLoading) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-[430px] items-center justify-center bg-[#FFF9F5]">
+      <main className="mx-auto flex min-h-screen w-full max-w-[430px] items-center justify-center bg-[#FAF8F6]">
         <LoadingSpinner size="lg" />
       </main>
     );
@@ -59,7 +59,7 @@ export default function AdminPage() {
 
   if (loadError || !stats) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-[430px] items-center justify-center bg-[#FFF9F5] px-6">
+      <main className="mx-auto flex min-h-screen w-full max-w-[430px] items-center justify-center bg-[#FAF8F6] px-6">
         <ErrorMessage
           message={loadError ?? "統計情報を取得できませんでした。"}
         />
@@ -73,11 +73,11 @@ export default function AdminPage() {
       : 0;
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col bg-[#FFF9F5]">
+    <div className="mx-auto flex h-dvh w-full max-w-[430px] flex-col overflow-hidden bg-[#FAF8F6]">
       <Header
         title="管理画面"
         rightSlot={
-          <span className="bg-[#712B13] text-white text-xs font-medium px-3 py-1 rounded-full">
+          <span className="bg-[#D85A30] text-white text-md font-medium px-3 py-1 rounded-full">
             管理者
           </span>
         }
@@ -85,84 +85,77 @@ export default function AdminPage() {
       <div className="p-4 flex flex-col gap-3">
         <div
           data-testid="ui006-stats-card"
-          className="bg-white rounded-2xl border border-[#e0d6ce] p-4"
+          className="bg-white rounded-2xl p-4"
         >
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 bg-[#FAECE7] rounded-xl flex items-center justify-center">
-              <Users size={20} color="#993C1D" strokeWidth={1} />
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-9 h-9 bg-accent rounded-xl flex items-center justify-center text-accent-foreground">
+              <Users size={20} strokeWidth={2} />
             </div>
-            <span className="text-sm text-gray-500">総ユーザー数</span>
+            <span className="text-md font-bold text-accent-foreground">
+              総ユーザー数
+            </span>
           </div>
-          <p className="text-4xl font-medium text-[#D85A30]">
+          <p className="text-4xl font-medium text-[#6E5849]">
             {stats.total_users}{" "}
-            <span className="text-base text-[#993C1D]">人</span>
+            <span className="text-base text-[#6E5849]">人</span>
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 bg-[#FAECE7] rounded-xl flex items-center justify-center">
-              <PawPrint size={20} color="#993C1D" strokeWidth={1} />
+        <div className="bg-white rounded-2xl p-4">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-9 h-9 bg-accent rounded-xl flex items-center justify-center text-accent-foreground">
+              <PawPrint size={20} strokeWidth={2} />
             </div>
-            <span className="text-sm text-gray-500">登録ペット数</span>
+            <span className="text-md font-bold text-accent-foreground">
+              登録ペット数
+            </span>
           </div>
-          <p className="text-4xl font-medium text-[#D85A30] mb-3">
+          <p className="text-4xl font-medium text-[#6E5849] mb-3">
             {stats.total_pets}{" "}
-            <span className="text-base text-[#993C1D]">匹</span>
+            <span className="text-base text-[#6E5849]">匹</span>
           </p>
-          <div className="flex gap-2">
-            <div className="flex-1 bg-[#FFF9F5] rounded-lg px-3 py-2 flex justify-between text-sm">
-              <span className="flex items-center gap-1">
-                <Dog size={16} color="#993C1D" strokeWidth={1} /> 犬
+          <div className="flex gap-10 justify-center">
+            <div className="flex-1 max-w-[40%] bg-accent rounded-lg px-2 py-2 flex justify-between text-sm">
+              <span className="flex items-center gap-1 font-bold text-accent-foreground">
+                <Dog size={16} strokeWidth={2} /> 犬
               </span>
-              <span className="font-medium text-[#D85A30]">
+              <span className="font-medium text-[#6E5849]">
                 {stats.pets_by_species.dog ?? 0}匹
               </span>
             </div>
-            <div className="flex-1 bg-[#FFF9F5] rounded-lg px-3 py-2 flex justify-between text-sm">
-              <span className="flex items-center gap-1">
-                <Cat size={16} color="#993C1D" strokeWidth={1} /> 猫
+            <div className="flex-1 max-w-[40%] bg-accent rounded-lg px-2 py-2 flex justify-between text-sm">
+              <span className="flex items-center gap-1 font-bold text-accent-foreground">
+                <Cat size={16} strokeWidth={2} /> 猫
               </span>
-              <span className="font-medium text-[#D85A30]">
+              <span className="font-medium text-[#6E5849]">
                 {stats.pets_by_species.cat ?? 0}匹
               </span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 bg-[#FAECE7] rounded-xl flex items-center justify-center">
-              <Crown size={20} color="#993C1D" strokeWidth={1} />
+        <div className="bg-white rounded-2xl p-4">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-9 h-9 bg-accent rounded-xl flex items-center justify-center text-accent-foreground">
+              <Crown size={20} strokeWidth={2} />
             </div>
-            <span className="text-sm text-gray-500">プレミアム会員数</span>
+            <span className="text-md font-bold text-accent-foreground">
+              プレミアム会員数
+            </span>
           </div>
           <div className="flex items-center justify-between">
-            <p className="text-4xl font-medium text-[#D85A30]">
+            <p className="text-4xl font-medium text-[#6E5849]">
               {stats.premium_users}{" "}
-              <span className="text-base text-[#993C1D]">人</span>
+              <span className="text-base text-[#6E5849]">人</span>
             </p>
-            <span className="bg-[#FAECE7] text-[#993C1D] text-sm font-medium px-3 py-1 rounded-full">
+            <span className="bg-accent text-accent-foreground text-sm font-medium px-3 py-1 rounded-full">
               有料率 {premiumRate}%
             </span>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-[#e0d6ce] p-4">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 bg-[#FAECE7] rounded-xl flex items-center justify-center">
-              <CircleCheck size={20} color="#993C1D" strokeWidth={1} />
-            </div>
-            <span className="text-sm text-gray-500">本日のToDo達成状況</span>
-          </div>
-          <p className="text-4xl font-medium text-[#D85A30]">
-            {stats.completed_todos_today} / {stats.total_todos_today}{" "}
-            <span className="text-base text-[#993C1D]">件</span>
-          </p>
-        </div>
-
         <PrimaryButton
-          className="w-full border border-[#e0d6ce] bg-transparent text-gray-500 hover:bg-gray-50"
+          className="w-full h-12 bg-primary text-white hover:opacity-85"
           onClick={() => setIsLogoutModalOpen(true)}
         >
           ログアウト
@@ -177,13 +170,13 @@ export default function AdminPage() {
         footer={
           <div className="flex gap-2 w-full">
             <button
-              className="flex-1 py-2 rounded-lg border border-[#e0d6ce] text-sm text-gray-500"
+              className="h-11 flex-1 rounded-2xl border border-border text-sm font-medium text-foreground"
               onClick={() => setIsLogoutModalOpen(false)}
             >
               キャンセル
             </button>
             <PrimaryButton
-              className="flex-1 bg-[#D85A30] hover:bg-[#D85A30] hover:opacity-85"
+              className="flex-1 h-11 rounded-2xl"
               onClick={handleLogout}
             >
               ログアウト

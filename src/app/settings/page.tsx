@@ -153,7 +153,7 @@ function SettingsPageContent() {
         body: JSON.stringify({ line_user_id: lineUserId }),
       });
       setIsLineLinked(true);
-    } catch (err) {
+    } catch {
       alert("LINE連携に失敗しました。");
     }
   };
@@ -166,7 +166,7 @@ function SettingsPageContent() {
       });
       setIsLineLinked(false);
       setIsLineUnlinkModalOpen(false);
-    } catch (err) {
+    } catch {
       alert("LINE連携の解除に失敗しました。");
     }
   };
@@ -175,7 +175,7 @@ function SettingsPageContent() {
     // ★Stripe解約の成否を先に確定させる
     try {
       await apiFetch("/api/stripe/cancel", { method: "POST" });
-    } catch (err) {
+    } catch {
       alert("解約処理に失敗しました。もう一度お試しください。");
       return;
     }
@@ -189,7 +189,7 @@ function SettingsPageContent() {
         body: JSON.stringify({ line_user_id: null }),
       });
       setIsLineLinked(false);
-    } catch (err) {
+    } catch {
       alert(
         "プレミアムプランの解約手続きは完了しましたが、LINE連携の解除処理でエラーが発生しました。お手数ですが、時間を置いてページを再読み込みしてください。解消しない場合はサポートまでお問い合わせください。",
       );
@@ -206,7 +206,7 @@ function SettingsPageContent() {
         body: JSON.stringify({ notification_time: notificationTime }),
       });
       alert("通知時間を保存しました！");
-    } catch (err) {
+    } catch {
       alert("通知時間の保存に失敗しました。");
     }
   };
@@ -215,7 +215,7 @@ function SettingsPageContent() {
     try {
       await apiFetch("/api/notifications/line/remind", { method: "POST" });
       alert("LINEを送信しました！");
-    } catch (err) {
+    } catch {
       alert("LINEの送信に失敗しました。");
     }
   };
