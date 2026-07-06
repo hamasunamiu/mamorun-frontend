@@ -129,6 +129,7 @@ export default function TimelinePage() {
           //   通知が届かないことがあるため。フロント側でチェックする方式に変更
         },
         (payload) => {
+          console.log("★health_logs realtime event:", payload);
           if (payload.eventType === "INSERT") {
             const newLog = payload.new as HealthLog;
             // ★filterを外した分、ここでpet_idチェックを追加
@@ -222,6 +223,9 @@ export default function TimelinePage() {
       await apiFetch(`/api/health-logs/${deleteTargetId}`, {
         method: "DELETE",
       });
+      setLogs((prevLogs) =>
+        prevLogs.filter((log) => log.id !== deleteTargetId),
+      );
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -238,6 +242,7 @@ export default function TimelinePage() {
     setPet(selectedPet);
     setSelectedPetId(selectedPet.id);
     setIsPetSwitchModalOpen(false);
+
     // ★ペット切り替え時：新しいpetIdでログを再取得する
     setIsLoading(true);
     await fetchLogsForPet(selectedPet.id);
