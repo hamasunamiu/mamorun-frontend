@@ -1,12 +1,14 @@
 "use client";
 
 import type { UseFormRegister, FieldErrors } from "react-hook-form";
+import { RefreshCw } from "lucide-react";
 import { Modal } from "@/components/common/Modal";
 import { InputField } from "@/components/common/InputField";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 
 type TodoFormValues = {
   taskName: string;
+  isDaily: boolean;
 };
 
 type TodoFormModalProps = {
@@ -41,6 +43,19 @@ export function TodoFormModal({
           {...register("taskName")}
           error={errors.taskName?.message}
         />
+
+       <label className="flex items-center gap-2 cursor-pointer select-none">
+         <input
+           type="checkbox"
+           {...register("isDaily")}
+           className="w-4 h-4 accent-primary"
+         />
+         <span className="text-sm text-foreground flex items-center gap-1.5">
+            <RefreshCw size={14} className="text-muted-foreground" />
+            毎日自動で追加する
+         </span>
+        </label>
+
         <PrimaryButton
           type="submit"
           data-testid="todo-save-button"

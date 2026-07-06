@@ -57,6 +57,7 @@ function SettingsPageContent() {
   const [isInviting, setIsInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const searchParams = useSearchParams();
+  const [petList, setPetList] = useState<Pet[]>([]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -75,6 +76,9 @@ function SettingsPageContent() {
         if (profile.pet_id) {
           const petData = await apiFetch<Pet>(`/api/pets/${profile.pet_id}`);
           setCurrentPet(petData);
+
+          const petListData = await apiFetch<Pet[]>('/api/pets');
+          setPetList(petListData ?? []);
         }
       } catch (err) {
         console.error("プロフィール取得失敗:", err);
@@ -230,19 +234,27 @@ function SettingsPageContent() {
             <PawPrint size={14} color="#993C1D" strokeWidth={1} />
             ペット情報
           </p>
-          <button
-            className="flex items-center justify-between py-1 w-full"
-            onClick={() => setIsPetEditModalOpen(true)}
-          >
-            <div className="flex items-center gap-3 text-sm text-gray-800">
-              <div className="w-8 h-8 bg-[#FAECE7] rounded-lg flex items-center justify-center">
-                <PenLine size={16} color="#993C1D" strokeWidth={1} />
+
+          {/* ペットごとに編集ボタンを並べる */}
+          {petList.map((pet) => (
+            <button
+              key={pet.id}
+              className="flex items-center justify-between py-1 w-full"
+              onClick={() => {
+                setCurrentPet(pet);
+                setIsPetEditModalOpen(true);
+              }}
+            >
+              <div className="flex items-center gap-3 text-sm text-gray-800">
+                <div className="w-8 h-8 bg-[#FAECE7] rounded-lg flex items-center justify-center">
+                  <PenLine size={16} color="#993C1D" strokeWidth={1} />
+                </div>
+                {pet.name}を編集する
               </div>
-              ペット情報を編集する
-            </div>
-            <span className="text-gray-400">›</span>
-          </button>
-          <div className="border-t border-[#f0ece8] my-2" />
+              <span className="text-gray-400">›</span>
+            </button>
+          ))}
+          
           <button
             className="flex items-center justify-between py-1 w-full"
             onClick={() => setIsPetModalOpen(true)}
@@ -525,8 +537,12 @@ function SettingsPageContent() {
         onSaved={async () => {
           if (currentPet?.id) {
             try {
-              const petData = await apiFetch<Pet>(`/api/pets/${currentPet.id}`);
+              const [petData, petListData] = await Promise.all([
+                apiFetch<Pet>(`/api/pets/${currentPet.id}`),
+                apiFetch<Pet[]>('/api/pets'),
+              ]);
               setCurrentPet(petData);
+              setPetList(petListData ?? []);
             } catch (err) {
               console.error("ペット情報の再取得に失敗:", err);
             }

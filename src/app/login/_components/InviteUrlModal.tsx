@@ -14,7 +14,10 @@ export function InviteUrlModal({ open, onOpenChange }: InviteUrlModalProps) {
       onOpenChange={onOpenChange}
       title="招待URLをお持ちの方"
       footer={
-        <PrimaryButton className="w-full" onClick={() => onOpenChange(false)}>
+        <PrimaryButton
+          className="h-12 w-full text-sm font-semibold"
+          onClick={() => onOpenChange(false)}
+        >
           閉じる
         </PrimaryButton>
       }
