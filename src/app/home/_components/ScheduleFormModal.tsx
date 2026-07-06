@@ -41,12 +41,14 @@ export function ScheduleFormModal({
           required
           data-testid="schedule-title-input"
           placeholder="例：フィラリア薬"
+          className="border-[#a8825f] placeholder:text-[#8a6d54]"
           {...register("title")}
           error={errors.title?.message}
         />
         <TextAreaField
           label="予定内容"
           placeholder="例：毎月15日に投与"
+          className="border-[#a8825f] placeholder:text-[#8a6d54]"
           {...register("scheduledContent")}
           error={errors.scheduledContent?.message}
         />
@@ -55,6 +57,7 @@ export function ScheduleFormModal({
           required
           type="date"
           data-testid="schedule-date-input"
+          className="border-[#a8825f] register-date-input"
           {...register("scheduledDate")}
           error={errors.scheduledDate?.message}
         />

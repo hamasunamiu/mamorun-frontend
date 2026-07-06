@@ -40,20 +40,21 @@ export function TodoFormModal({
           required
           data-testid="todo-title-input"
           placeholder="例：朝ごはん　7時"
+          className="border-[#a8825f] placeholder:text-[#8a6d54]"
           {...register("taskName")}
           error={errors.taskName?.message}
         />
 
-       <label className="flex items-center gap-2 cursor-pointer select-none">
-         <input
-           type="checkbox"
-           {...register("isDaily")}
-           className="w-4 h-4 accent-primary"
-         />
-         <span className="text-sm text-foreground flex items-center gap-1.5">
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            {...register("isDaily")}
+            className="w-4 h-4 accent-primary"
+          />
+          <span className="text-sm text-foreground flex items-center gap-1.5">
             <RefreshCw size={14} className="text-muted-foreground" />
             毎日自動で追加する
-         </span>
+          </span>
         </label>
 
         <PrimaryButton

@@ -6,7 +6,6 @@ import {
   PenLine,
   Plus,
   Users,
-  Star,
   Crown,
   Smartphone,
   Bell,
@@ -228,8 +227,8 @@ function SettingsPageContent() {
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 pb-24">
         {/* アカウント情報 */}
         <div className="bg-white rounded-2xl p-4">
-          <p className="flex items-center gap-1.5 text-xs font-medium text-accent-foreground mb-3">
-            <User size={14} strokeWidth={1} />
+          <p className="flex items-center gap-1.5 text-md font-bold text-accent-foreground mb-3">
+            <User size={16} strokeWidth={2} />
             アカウント情報
           </p>
           <div className="flex items-center justify-between py-1.5">
@@ -245,7 +244,7 @@ function SettingsPageContent() {
             {isPremium ? (
               <span
                 data-testid="ui005-premium-badge"
-                className="bg-[#FBF3DC] border border-[#C9A227] text-[#8A6D1E] text-xs font-medium px-3 py-1 rounded-full"
+                className="bg-[#FAECE7] border border-[#D85A30] text-[#993C1D] text-xs font-medium px-3 py-1 rounded-full"
               >
                 プレミアムプラン
               </span>
@@ -259,8 +258,8 @@ function SettingsPageContent() {
 
         {/* ペット情報 */}
         <div className="bg-white rounded-2xl p-4">
-          <p className="flex items-center gap-1.5 text-xs font-medium text-accent-foreground mb-3">
-            <PawPrint size={14} strokeWidth={1} />
+          <p className="flex items-center gap-1.5 text-md font-bold text-accent-foreground mb-3">
+            <PawPrint size={16} strokeWidth={2} />
             ペット情報
           </p>
           {/* ペットごとに編集ボタンを並べる */}
@@ -303,8 +302,8 @@ function SettingsPageContent() {
           className="bg-white rounded-2xl p-4 cursor-pointer"
           onClick={() => setIsInviteModalOpen(true)}
         >
-          <p className="flex items-center gap-1.5 text-xs font-medium text-accent-foreground mb-3">
-            <Users size={14} strokeWidth={1} />
+          <p className="flex items-center gap-1.5 text-md font-bold text-accent-foreground mb-3">
+            <Users size={16} strokeWidth={2} />
             家族を招待する
           </p>
           <div className="flex items-center justify-between py-1 text-accent-foreground">
@@ -320,8 +319,8 @@ function SettingsPageContent() {
 
         {/* プレミアムプラン（LINE連携・通知設定・解約含む） */}
         <div className="bg-white rounded-2xl p-4">
-          <p className="flex items-center gap-1.5 text-xs font-medium text-accent-foreground mb-3">
-            <Star size={14} strokeWidth={1} />
+          <p className="flex items-center gap-1.5 text-md font-bold text-accent-foreground mb-3">
+            <Crown size={16} strokeWidth={2} />
             プレミアムプラン
           </p>
           <p className="text-sm text-muted-foreground leading-relaxed mb-3">
@@ -332,7 +331,7 @@ function SettingsPageContent() {
           {!isPremium && (
             <PrimaryButton
               data-testid="ui005-premium-button"
-              className="w-full h-12 rounded-2xl mb-3 bg-[#BFA054] hover:bg-[#AD9048] text-white"
+              className="w-full h-12 rounded-2xl mb-3 bg-[#D85A30] hover:bg-[#D85A30] hover:opacity-85 text-white"
               onClick={handleUpgrade}
               disabled={isUpgrading}
             >
@@ -347,8 +346,8 @@ function SettingsPageContent() {
             className={`flex flex-col gap-3 ${!isPremium ? "opacity-40 pointer-events-none" : ""}`}
           >
             <div className="border-t border-border pt-3">
-              <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
-                <Smartphone size={14} strokeWidth={1} />
+              <p className="flex items-center gap-1.5 text-sm font-bold text-muted-foreground mb-2">
+                <Smartphone size={14} strokeWidth={2} />
                 LINE連携
               </p>
               {isLineLinked ? (
@@ -375,8 +374,8 @@ function SettingsPageContent() {
 
             {isLineLinked && (
               <div className="border-t border-border pt-3">
-                <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-2">
-                  <Bell size={14} strokeWidth={1} />
+                <p className="flex items-center gap-1.5 text-sm font-bold text-muted-foreground mb-2">
+                  <Bell size={14} strokeWidth={2} />
                   LINE通知タイミング
                 </p>
                 <p className="text-xs text-muted-foreground mb-2">
@@ -405,7 +404,8 @@ function SettingsPageContent() {
                   </button>
                 </div>
                 <PrimaryButton
-                  className="w-full h-12 rounded-2xl mt-2"
+                  variant="outline"
+                  className="w-full h-12 rounded-2xl mt-2 border-2 border-accent-foreground/30 text-accent-foreground hover:bg-accent"
                   onClick={handleSaveNotificationTime}
                 >
                   通知時間を保存する
@@ -416,7 +416,7 @@ function SettingsPageContent() {
             {isPremium && (
               <div className="border-t border-border pt-3">
                 <button
-                  className="text-xs text-muted-foreground underline"
+                  className="text-sm text-muted-foreground underline"
                   onClick={() => setIsPremiumCancelModalOpen(true)}
                 >
                   プレミアムプランを解約する
@@ -427,8 +427,7 @@ function SettingsPageContent() {
         </div>
 
         <PrimaryButton
-          variant="outline"
-          className="w-full h-12 rounded-2xl border-2 border-accent-foreground/30 text-accent-foreground hover:bg-accent"
+          className="w-full h-12 rounded-2xl"
           onClick={() => setIsLogoutModalOpen(true)}
         >
           ログアウト

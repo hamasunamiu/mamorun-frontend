@@ -22,7 +22,7 @@ export function Header({
   rightSlot,
 }: HeaderProps) {
   return (
-    <header className="flex items-center justify-between border-b border-border bg-background py-3 pl-7 pr-4">
+    <header className="flex items-center justify-between border-b border-border bg-background py-3 pl-7 pr-4 min-h-20">
       <div>
         {dateLabel && (
           <p className="text-md text-muted-foreground">{dateLabel}</p>
@@ -53,7 +53,7 @@ export function Header({
           </button>
         ) : (
           title && (
-            <h1 className="text-lg font-medium text-foreground">{title}</h1>
+            <h1 className="text-xl font-medium text-foreground">{title}</h1>
           )
         )}
       </div>

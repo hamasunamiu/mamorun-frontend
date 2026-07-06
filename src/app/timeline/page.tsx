@@ -301,7 +301,7 @@ export default function TimelinePage() {
                   {getAvatarInitial(log.created_by_id)}
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     {new Date(log.created_at).toLocaleDateString("ja-JP", {
                       month: "long",
                       day: "numeric",
@@ -334,7 +334,7 @@ export default function TimelinePage() {
                     className="flex items-center gap-1 text-xs text-gray-500"
                     onClick={() => handleDeleteClick(log.id)}
                   >
-                    <Trash2 size={12} strokeWidth={1} />
+                    <Trash2 size={12} strokeWidth={2} />
                     削除
                   </button>
                 </div>
@@ -365,6 +365,7 @@ export default function TimelinePage() {
             data-testid="log-title-input"
             placeholder="例：朝の体調チェック"
             required
+            className="border-[#a8825f] placeholder:text-[#8a6d54]"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
@@ -373,6 +374,7 @@ export default function TimelinePage() {
             name="memo"
             data-testid="log-memo-input"
             placeholder="例：食欲あり、元気です"
+            className="border-[#a8825f] placeholder:text-[#8a6d54]"
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
           />
