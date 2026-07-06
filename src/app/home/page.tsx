@@ -11,7 +11,7 @@ import { EmergencyCallButton } from "@/components/common/EmergencyCallButton";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { formatDateLabel } from "@/lib/dateFormat";
-import type { Pet, Todo, Schedule, TodoTemplate } from "./_components/types";
+import type { Pet, Todo, Schedule, TodoTemplate } from "@/types";
 import { useCareHomeData } from "./_components/useCareHomeData";
 import { PetSwitchModal } from "@/components/common/PetSwitchModal";
 import { DeleteConfirmModal } from "./_components/DeleteConfirmModal";
@@ -61,7 +61,7 @@ const todoFormSchema = z.object({
     .string()
     .min(1, "タスク名を入力してください")
     .max(250, "250文字以内で入力してください"),
-  isDaily: z.boolean().default(false),
+  isDaily: z.boolean(),
 });
 
 type TodoFormValues = z.infer<typeof todoFormSchema>;
@@ -146,13 +146,13 @@ export default function CareHomePage() {
   };
 
   const handleStartEditTodo = (todo: Todo) => {
-  const template = todoTemplates.find((t) => t.task_name === todo.task_name);
-  resetTodoForm({
-    taskName: todo.task_name,
-    isDaily: template?.is_active ?? false, 
-  });
-  todoModal.openForEdit(todo.id);
-};
+    const template = todoTemplates.find((t) => t.task_name === todo.task_name);
+    resetTodoForm({
+      taskName: todo.task_name,
+      isDaily: template?.is_active ?? false,
+    });
+    todoModal.openForEdit(todo.id);
+  };
 
   const handleToggleTodo = async (todoId: string) => {
     const todo = todos.find((t) => t.id === todoId);
@@ -192,51 +192,53 @@ export default function CareHomePage() {
   // editingTodoIdの有無で「新規追加」か「既存の更新」かを分岐する
   const onSubmitTodo = async (values: TodoFormValues) => {
     if (todoModal.editingId) {
-  try {
-    await apiFetch(`/api/todos/${todoModal.editingId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ task_name: values.taskName }),
-    });
-    setTodos((prevTodos) =>
-      prevTodos.map((todo) =>
-        todo.id === todoModal.editingId
-          ? { ...todo, task_name: values.taskName }
-          : todo,
-      ),
-    );
-
-    // ★追加：テンプレートの作成・削除処理
-    const existingTemplate = todoTemplates.find(
-      (t) => t.task_name === todos.find((td) => td.id === todoModal.editingId)?.task_name
-    );
-
-    if (values.isDaily && !existingTemplate) {
-      // チェックON かつ テンプレートなし → 新規作成
       try {
-        await apiFetch("/api/todo-templates", {
-          method: "POST",
-          body: JSON.stringify({
-            task_name: values.taskName,
-            pet_id: pet?.id,
-          }),
+        await apiFetch(`/api/todos/${todoModal.editingId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ task_name: values.taskName }),
         });
+        setTodos((prevTodos) =>
+          prevTodos.map((todo) =>
+            todo.id === todoModal.editingId
+              ? { ...todo, task_name: values.taskName }
+              : todo,
+          ),
+        );
+
+        // ★追加：テンプレートの作成・削除処理
+        const existingTemplate = todoTemplates.find(
+          (t) =>
+            t.task_name ===
+            todos.find((td) => td.id === todoModal.editingId)?.task_name,
+        );
+
+        if (values.isDaily && !existingTemplate) {
+          // チェックON かつ テンプレートなし → 新規作成
+          try {
+            await apiFetch("/api/todo-templates", {
+              method: "POST",
+              body: JSON.stringify({
+                task_name: values.taskName,
+                pet_id: pet?.id,
+              }),
+            });
+          } catch (err) {
+            console.error("テンプレート作成失敗:", err);
+          }
+        } else if (!values.isDaily && existingTemplate) {
+          // チェックOFF かつ テンプレートあり → 削除
+          try {
+            await apiFetch(`/api/todo-templates/${existingTemplate.id}`, {
+              method: "DELETE",
+            });
+          } catch (err) {
+            console.error("テンプレート削除失敗:", err);
+          }
+        }
       } catch (err) {
-        console.error("テンプレート作成失敗:", err);
+        console.error("ToDo更新失敗:", err);
       }
-    } else if (!values.isDaily && existingTemplate) {
-      // チェックOFF かつ テンプレートあり → 削除
-      try {
-        await apiFetch(`/api/todo-templates/${existingTemplate.id}`, {
-          method: "DELETE",
-        });
-      } catch (err) {
-        console.error("テンプレート削除失敗:", err);
-      }
-    }
-  } catch (err) {
-    console.error("ToDo更新失敗:", err);
-  }
- }else {
+    } else {
       try {
         await apiFetch("/api/todos", {
           method: "POST",
@@ -256,7 +258,7 @@ export default function CareHomePage() {
               }),
             });
           } catch (err) {
-            console.error("テンプレート作成失敗:", err,);
+            console.error("テンプレート作成失敗:", err);
           }
         }
       } catch (err) {
@@ -314,15 +316,28 @@ export default function CareHomePage() {
 
   // テンプレートON/OFF切り替え
   const handleToggleTemplate = async (template: TodoTemplate) => {
-  try {
-    await apiFetch(`/api/todo-templates/${template.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ is_active: !template.is_active }),
-    });
-  } catch (err) {
-    console.error("テンプレート更新失敗:", err);
-  }
-};
+    const nextIsActive = !template.is_active;
+
+    // 楽観的更新：自分の操作なので、Realtimeを待たずにその場で表示を更新する
+    setTodoTemplates((prevTemplates) =>
+      prevTemplates.map((t) =>
+        t.id === template.id ? { ...t, is_active: nextIsActive } : t,
+      ),
+    );
+
+    try {
+      await apiFetch(`/api/todo-templates/${template.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ is_active: nextIsActive }),
+      });
+    } catch (err) {
+      console.error("テンプレート更新失敗:", err);
+      // 失敗時はロールバック（元の状態に戻す）
+      setTodoTemplates((prevTemplates) =>
+        prevTemplates.map((t) => (t.id === template.id ? template : t)),
+      );
+    }
+  };
 
   // editingScheduleIdの有無で「新規追加」か「既存の更新」かを分岐する
   const onSubmitSchedule = async (values: ScheduleFormValues) => {
@@ -448,7 +463,7 @@ export default function CareHomePage() {
           onDeleteRequest={handleRequestDeleteTodo}
           onEdit={handleStartEditTodo}
           onToggleTemplate={handleToggleTemplate}
-       />
+        />
 
         {/* 今後の予定一覧 */}
         <ScheduleSection

@@ -3,7 +3,14 @@ import userEvent from "@testing-library/user-event";
 import CareHomePage from "../page";
 import { useCareHomeData } from "../_components/useCareHomeData";
 import { apiFetch } from "@/lib/api-client";
-import type { Pet, Todo, Schedule, Profile, Member } from "@/types";
+import type {
+  Pet,
+  Todo,
+  Schedule,
+  Profile,
+  Member,
+  TodoTemplate,
+} from "@/types";
 
 // useCareHomeDataを丸ごとモック化する
 // Realtime同期自体の検証はこのテストの対象外とし、
@@ -60,17 +67,6 @@ const mockPet: Pet = {
   created_at: "2026-01-01T00:00:00.000Z",
 };
 
-const mockMembers: Member[] = [
-  {
-    id: "member-1",
-    display_name: "まの",
-    is_premium: false,
-    pet_id: "pet-1",
-    notification_time: "morning",
-    created_at: "2026-01-01T00:00:00.000Z",
-  },
-];
-
 const mockTodo: Todo = {
   id: "todo-1",
   pet_id: "pet-1",
@@ -91,6 +87,14 @@ const mockSchedule: Schedule = {
   scheduled_date: "2026-07-15",
   is_completed: false,
   created_at: "2026-06-29T00:00:00.000Z",
+};
+
+const mockTodoTemplate: TodoTemplate = {
+  id: "template-1",
+  pet_id: "pet-1",
+  task_name: "朝ごはん",
+  is_active: true,
+  created_at: "2026-01-01T00:00:00.000Z",
 };
 
 type MockCareHomeData = ReturnType<typeof useCareHomeData>;
@@ -115,6 +119,8 @@ function createMockHookReturn(
     switchToPet: jest.fn(),
     isSwitching: false,
     switchError: null,
+    todoTemplates: [mockTodoTemplate],
+    setTodoTemplates: jest.fn(),
     ...overrides,
   };
 }
