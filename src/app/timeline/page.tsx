@@ -35,58 +35,67 @@ export default function TimelinePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [imageUploaderKey, setImageUploaderKey] = useState(0);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [pet, setPet] = useState<Pet | null>(null);
   const [petList, setPetList] = useState<Pet[]>([]);
   const [isPetSwitchModalOpen, setIsPetSwitchModalOpen] = useState(false);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [memberMap, setMemberMap] = useState<Map<string, string | null>>(
     new Map(),
   );
 
+  // ★petIdを指定して体調ログを取得するヘルパー
+  // 初回読み込み・ペット切り替え時の両方から呼び出す
+  const fetchLogsForPet = async (petId: string) => {
+    try {
+      const logsData = await apiFetch<HealthLog[]>(
+        `/api/health-logs?petId=${petId}`,
+      );
+      setLogs(logsData ?? []);
+    } catch (err) {
+      console.error("体調ログ取得失敗:", err);
+      setError("体調ログの取得に失敗しました。");
+    }
+  };
+
   useEffect(() => {
-    const fetchLogs = async () => {
+    const fetchInitialData = async () => {
+      setIsLoading(true);
       const savedPetId = getSelectedPetId();
 
-      const [logsResult, profileResult] = await Promise.allSettled([
-        apiFetch<HealthLog[]>("/api/health-logs"),
-        apiFetch<{ id: string; pet_id: string | null }>("/api/profiles/me"),
-      ]);
+      try {
+        const profileData = await apiFetch<{
+          id: string;
+          pet_id: string | null;
+        }>("/api/profiles/me");
 
-      if (logsResult.status === "fulfilled") {
-        setLogs(logsResult.value ?? []);
-      } else {
-        setError("体調ログの取得に失敗しました。");
-      }
+        setCurrentUserId(profileData.id);
 
-      // fetchLogs内、プロフィール取得結果の分岐を修正
-      if (profileResult.status === "fulfilled") {
-        setCurrentUserId(profileResult.value.id);
+        const targetPetId = savedPetId ?? profileData.pet_id;
 
-        const targetPetId = savedPetId ?? profileResult.value.pet_id;
         if (targetPetId) {
-          try {
-            const [petData, petListData] = await Promise.all([
-              apiFetch<Pet>(`/api/pets/${targetPetId}`),
-              apiFetch<Pet[]>("/api/pets"),
-            ]);
-            setPet(petData);
-            setPetList(petListData ?? []);
-          } catch (err) {
-            console.error("ペット情報取得失敗:", err);
-          }
+          const [petData, petListData] = await Promise.all([
+            apiFetch<Pet>(`/api/pets/${targetPetId}`),
+            apiFetch<Pet[]>("/api/pets"),
+          ]);
+          setPet(petData);
+          setPetList(petListData ?? []);
+
+          // ★petIdが決まってから体調ログを取得する
+          await fetchLogsForPet(targetPetId);
         }
-      } else {
+      } catch (err) {
         // ★プロフィール取得自体が失敗した場合は致命的なエラーとして扱う
         setLoadError("情報の読み込みに失敗しました。もう一度お試しください。");
+      } finally {
+        setIsLoading(false);
       }
-
-      setIsLoading(false);
     };
-    fetchLogs();
+
+    fetchInitialData();
   }, []);
 
   useEffect(() => {
@@ -115,12 +124,16 @@ export default function TimelinePage() {
           event: "*",
           schema: "public",
           table: "health_logs",
-          filter: `pet_id=eq.${pet.id}`,
+          // ★filterを削除：SupabaseのDELETEイベントはpayload.oldに
+          //   全カラムが含まれないことがあり、filter条件と一致せず
+          //   通知が届かないことがあるため。フロント側でチェックする方式に変更
         },
         (payload) => {
           console.log("★health_logs realtime event:", payload);
           if (payload.eventType === "INSERT") {
             const newLog = payload.new as HealthLog;
+            // ★filterを外した分、ここでpet_idチェックを追加
+            if (newLog.pet_id !== pet.id) return;
             setLogs((prevLogs) => {
               if (prevLogs.some((l) => l.id === newLog.id)) {
                 return prevLogs;
@@ -129,6 +142,10 @@ export default function TimelinePage() {
             });
           } else if (payload.eventType === "DELETE") {
             const deletedLog = payload.old as HealthLog;
+            // ★DELETE時はpayload.oldにpet_idが含まれない可能性があるため、
+            //   pet_idチェックはせず、該当idがあれば無条件で除去する
+            //   （idはグローバルに一意なUUIDのため、他ペットのログが誤って
+            //   混ざる心配はない）
             setLogs((prevLogs) =>
               prevLogs.filter((l) => l.id !== deletedLog.id),
             );
@@ -156,12 +173,12 @@ export default function TimelinePage() {
   const isSubmitDisabled = title.trim() === "" || isSubmitting;
 
   const handleSubmit = async () => {
-    if (isSubmitDisabled) return;
+    if (isSubmitDisabled || !pet) return;
     setIsSubmitting(true);
     try {
       let attachedImageUrl: string | undefined;
 
-      if (imageFile && pet) {
+      if (imageFile) {
         attachedImageUrl = await uploadPetImage(
           pet.id,
           imageFile,
@@ -169,12 +186,14 @@ export default function TimelinePage() {
         );
       }
 
-      const newLog = await apiFetch<HealthLog>("/api/health-logs", {
+      await apiFetch<HealthLog>("/api/health-logs", {
         method: "POST",
         body: JSON.stringify({
           title,
           detail_memo: memo,
           attached_image_url: attachedImageUrl,
+          // ★ペット切り替え対応：現在選択中のpetIdを明示的に送信
+          petId: pet.id,
         }),
       });
 
@@ -205,8 +224,8 @@ export default function TimelinePage() {
         method: "DELETE",
       });
       setLogs((prevLogs) =>
-        prevLogs.filter((log) => log.id !== deleteTargetId)
-      ); 
+        prevLogs.filter((log) => log.id !== deleteTargetId),
+      );
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -224,19 +243,14 @@ export default function TimelinePage() {
     setSelectedPetId(selectedPet.id);
     setIsPetSwitchModalOpen(false);
 
-    try {
-      const logsData = await apiFetch<HealthLog[]>(
-        `/api/health-logs?petId=${selectedPet.id}`
-      );
-      setLogs(logsData ?? []);
-    } catch (err) {
-      console.error("ログ再取得失敗:", err);
-    }
+    // ★ペット切り替え時：新しいpetIdでログを再取得する
+    setIsLoading(true);
+    await fetchLogsForPet(selectedPet.id);
+    setIsLoading(false);
   };
 
   return (
     <div className="mx-auto flex h-dvh w-full max-w-[430px] flex-col overflow-hidden bg-[#FAF8F6]">
-      {/* ★home画面と統一：dateLabelを渡さないことでヘッダー高さを揃える */}
       <Header
         petName={pet?.name}
         petSpecies={pet?.species}
@@ -281,18 +295,12 @@ export default function TimelinePage() {
           </div>
         ) : (
           logs.map((log) => (
-            <div
-              key={log.id}
-              // ★home画面のTodoCardと統一：枠線を削除し bg-white rounded-2xl のみに
-              className="bg-white rounded-2xl p-4"
-            >
+            <div key={log.id} className="bg-white rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                {/* ★アバター：デザイントークン（accent）に統一 */}
                 <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center text-xs font-medium text-accent-foreground">
                   {getAvatarInitial(log.created_by_id)}
                 </div>
                 <div>
-                  {/* ★日時の文字色：ハードコードからトークンへ */}
                   <p className="text-xs text-muted-foreground">
                     {new Date(log.created_at).toLocaleDateString("ja-JP", {
                       month: "long",
@@ -351,7 +359,6 @@ export default function TimelinePage() {
         title="今日の記録を追加"
       >
         <div className="flex flex-col gap-3">
-          {/* ★見出しの色をトークン（foreground）に統一 */}
           <InputField
             label="タイトル"
             name="title"
@@ -375,7 +382,6 @@ export default function TimelinePage() {
             onFileSelect={(file) => setImageFile(file)}
           />
           {error && <p className="text-xs text-red-500">{error}</p>}
-          {/* ★home画面のTodoFormModalと統一：色をPrimaryButtonのデフォルトに任せる */}
           <PrimaryButton
             data-testid="ui003-post-log-button"
             className="w-full h-12 rounded-2xl"
@@ -395,13 +401,13 @@ export default function TimelinePage() {
         footer={
           <div className="flex gap-2 w-full">
             <button
-              className="h-11 flex-1 rounded-2xl border border-border text-sm font-medium text-foreground"
+              className="flex-1 py-2 rounded-lg border border-border text-sm text-gray-500"
               onClick={() => setIsDeleteModalOpen(false)}
             >
               キャンセル
             </button>
             <button
-              className="h-11 flex-1 rounded-2xl bg-[#C1583D] text-sm font-medium text-white hover:bg-[#A84A32]"
+              className="flex-1 py-2 rounded-lg bg-[#C1583D] text-white text-sm hover:bg-[#A84A32]"
               onClick={handleDeleteConfirm}
             >
               削除する
