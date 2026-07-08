@@ -49,3 +49,20 @@ export type Schedule = {
   is_completed: boolean;
   created_at: string;
 };
+
+export type Member = {
+  id: string;
+  display_name: string;
+  is_premium: boolean;
+  pet_id: string;
+  notification_time: "morning" | "night";
+  created_at: string;
+};
+
+export type TodoTemplate = {
+  id: string;
+  pet_id: string;
+  task_name: string;
+  is_active: boolean;
+  created_at: string;
+};

@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import CareHomePage from "../page";
 import { useCareHomeData } from "../_components/useCareHomeData";
 import { apiFetch } from "@/lib/api-client";
-import type { Pet, Todo, Schedule, Profile } from "@/types";
+import type { Pet, Todo, Schedule, Profile, TodoTemplate } from "@/types";
 
 // useCareHomeDataを丸ごとモック化する
 // Realtime同期自体の検証はこのテストの対象外とし、
@@ -82,6 +82,14 @@ const mockSchedule: Schedule = {
   created_at: "2026-06-29T00:00:00.000Z",
 };
 
+const mockTodoTemplate: TodoTemplate = {
+  id: "template-1",
+  pet_id: "pet-1",
+  task_name: "朝ごはん",
+  is_active: true,
+  created_at: "2026-01-01T00:00:00.000Z",
+};
+
 type MockCareHomeData = ReturnType<typeof useCareHomeData>;
 
 function createMockHookReturn(
@@ -96,9 +104,16 @@ function createMockHookReturn(
     schedules: [mockSchedule],
     setSchedules: jest.fn(),
     petList: [mockPet],
+    members: [],
+    setMembers: jest.fn(),
     isLoading: false,
     loadError: null,
     isMounted: true,
+    switchToPet: jest.fn(),
+    isSwitching: false,
+    switchError: null,
+    todoTemplates: [mockTodoTemplate],
+    setTodoTemplates: jest.fn(),
     ...overrides,
   };
 }
@@ -197,7 +212,7 @@ describe("CareHomePage", () => {
 
       expect(apiFetch).toHaveBeenCalledWith("/api/todos", {
         method: "POST",
-        body: JSON.stringify({ task_name: "お昼ごはん" }),
+        body: JSON.stringify({ task_name: "お昼ごはん", petId: "pet-1" }),
       });
 
       await waitFor(() => {
@@ -421,6 +436,7 @@ describe("CareHomePage", () => {
             title: "フィラリア薬",
             scheduled_content: "毎月15日に投与",
             scheduled_date: "2026-07-15",
+            petId: "pet-1",
           }),
         });
       });
@@ -566,9 +582,9 @@ describe("CareHomePage", () => {
         expect(await screen.findByRole("dialog")).toBeInTheDocument();
       });
 
-      test("UT-F-229: ペットを選択するとpetが切り替わりModalが閉じる", async () => {
+      test("UT-F-229: ペットを選択するとswitchToPetが呼ばれModalが閉じる", async () => {
         const user = userEvent.setup();
-        const mockSetPet = jest.fn();
+        const mockSwitchToPet = jest.fn().mockResolvedValue(true);
         const secondPet = {
           ...mockPet,
           id: "pet-2",
@@ -578,7 +594,7 @@ describe("CareHomePage", () => {
         (useCareHomeData as jest.Mock).mockReturnValue(
           createMockHookReturn({
             petList: [mockPet, secondPet],
-            setPet: mockSetPet,
+            switchToPet: mockSwitchToPet,
           }),
         );
 
@@ -589,7 +605,11 @@ describe("CareHomePage", () => {
         );
         await user.click(await screen.findByText("たま"));
 
-        expect(mockSetPet).toHaveBeenCalledWith(secondPet);
+        expect(mockSwitchToPet).toHaveBeenCalledWith(secondPet);
+
+        await waitFor(() => {
+          expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
       });
     });
 

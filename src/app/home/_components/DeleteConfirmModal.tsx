@@ -39,7 +39,7 @@ export function DeleteConfirmModal({
           <button
             type="button"
             onClick={onConfirm}
-            className="h-11 flex-1 rounded-2xl bg-destructive text-sm font-medium text-white"
+            className="h-11 flex-1 rounded-2xl bg-[#C1583D] text-sm font-medium text-white hover:bg-[#A84A32]"
           >
             削除する
           </button>

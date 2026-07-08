@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, ApiError } from "@/lib/api-client";
 import { supabase } from "@/lib/supabase";
 import { getSelectedPetId, clearSelectedPetId } from "@/lib/petStorage";
-import type { Profile, Pet, Todo, Schedule } from "./types";
+import type { Profile, Pet, Todo, Schedule, Member, TodoTemplate } from "./types";
 
 export function useCareHomeData() {
   const router = useRouter();
@@ -16,18 +16,22 @@ export function useCareHomeData() {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [petList, setPetList] = useState<Pet[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isSwitching, setIsSwitching] = useState(false);
+  const [switchError, setSwitchError] = useState<string | null>(null);
+  const membersRef = useRef<Member[]>([]);
+  const [todoTemplates, setTodoTemplates] = useState<TodoTemplate[]>([]);
+  useEffect(() => {
+    membersRef.current = members;
+  }, [members]);
 
   // ------------------------------------------------------------
   // データ取得（ステップ1：土台作り）
   // ------------------------------------------------------------
 
   useEffect(() => {
-    // ① GET /api/profiles/me で pet_id を取得
-    // ② pet_id が null の場合（DB設計書の「状態B：未ペアリング」）は UI-001 へリダイレクト
-    //    本来は Next.js Middleware が担う想定だが、未実装の可能性も考慮しこの画面側でも軽くガードする
-    // ③ pet_id がある場合は GET /api/pets/:petId でペット情報・病院電話番号を取得
     const fetchInitialData = async () => {
       setIsLoading(true);
       setLoadError(null);
@@ -37,36 +41,48 @@ export function useCareHomeData() {
         setProfile(profileData);
 
         if (!profileData.pet_id) {
-          // 未ペアリング状態：お世話ホームを表示する前提が崩れるため初期登録画面へ
           router.push("/login");
           return;
         }
 
-        //ペット・ToDo・スケジュール・ペット一覧を並行取得
-        const [petData, todosData, schedulesData, petListData] =
+        const [petData, todosData, schedulesData, petListData, membersData, todoTemplatesData] =
           await Promise.all([
             apiFetch<Pet>(`/api/pets/${profileData.pet_id}`),
             apiFetch<Todo[]>("/api/todos"),
             apiFetch<Schedule[]>("/api/schedules"),
             apiFetch<Pet[]>("/api/pets"),
+            apiFetch<Member[]>(`/api/pets/${profileData.pet_id}/members`),
+            apiFetch<TodoTemplate[]>("/api/todo-templates"),
           ]);
 
-        //localStorageに保存されたペットIDがあればそちらを優先
         const savedPetId = getSelectedPetId();
         if (savedPetId && savedPetId !== profileData.pet_id) {
           try {
-            const savedPetData = await apiFetch<Pet>(`/api/pets/${savedPetId}`);
+            const [savedPetData, savedTodos, savedSchedules, savedMembersData] =
+              await Promise.all([
+                apiFetch<Pet>(`/api/pets/${savedPetId}`),
+                apiFetch<Todo[]>(`/api/todos?petId=${savedPetId}`),
+                apiFetch<Schedule[]>(`/api/schedules?petId=${savedPetId}`),
+                apiFetch<Member[]>(`/api/pets/${savedPetId}/members`),
+              ]);
             setPet(savedPetData);
+            setTodos(savedTodos ?? []);
+            setSchedules(savedSchedules ?? []);
+            setMembers(savedMembersData ?? []);
+            setPetList(petListData ?? []);
+            return;
           } catch {
             setPet(petData);
             clearSelectedPetId();
           }
         } else {
           setPet(petData);
+          setMembers(membersData ?? []);
         }
         setTodos(todosData ?? []);
         setSchedules(schedulesData ?? []);
         setPetList(petListData ?? []);
+        setTodoTemplates(todoTemplatesData ?? []);
       } catch (err) {
         setLoadError(
           err instanceof ApiError
@@ -86,20 +102,51 @@ export function useCareHomeData() {
   // ------------------------------------------------------------
 
   useEffect(() => {
-    // マウント完了をフラグで示すだけにする（cascading render警告を回避）
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
   }, []);
+
+  // ------------------------------------------------------------
+  // ★追加：ペット切り替え時の再取得処理
+  // ------------------------------------------------------------
+  // バックエンドの petId クエリパラメータ対応後に有効化される想定。
+  // 対応前は petId が無視され、代表ペット（profiles.pet_id）のデータが
+  // 返ってくるだけなので、挙動は変わらない（安全にマージ可能）。
+  const switchToPet = async (selectedPet: Pet): Promise<boolean> => {
+    setIsSwitching(true);
+    setSwitchError(null);
+
+    try {
+      const [todosData, schedulesData, membersData, todoTemplatesData] = await Promise.all([
+        apiFetch<Todo[]>(`/api/todos?petId=${selectedPet.id}`),
+        apiFetch<Schedule[]>(`/api/schedules?petId=${selectedPet.id}`),
+        apiFetch<Member[]>(`/api/pets/${selectedPet.id}/members`),
+        apiFetch<TodoTemplate[]>(`/api/todo-templates?petId=${selectedPet.id}`),
+      ]);
+
+      setPet(selectedPet);
+      setTodos(todosData ?? []);
+      setSchedules(schedulesData ?? []);
+      setMembers(membersData ?? []);
+      setTodoTemplates(todoTemplatesData ?? []);
+      return true;
+    } catch (err) {
+      setSwitchError(
+        err instanceof ApiError
+          ? err.message
+          : "ペットの切り替えに失敗しました。時間をおいて再度お試しください。",
+      );
+      return false;
+    } finally {
+      setIsSwitching(false);
+    }
+  };
 
   // ------------------------------------------------------------
   // Supabase Realtime：todosテーブルの変更を監視
   // ------------------------------------------------------------
 
   useEffect(() => {
-    // ★【最重要】バックエンドからの指示通り、変更通知を受け取った際は再fetchせず、
-    // payload.new / payload.old を使ってstateを直接更新する（再fetchはキャッシュ競合の原因になるため禁止）。
-    // pet.idが確定する前にフィルタを組み立てると意味のないチャンネルになるため、
-    // pet?.id が存在する場合のみリスナーを登録する。
     if (!pet?.id) return;
 
     const channel = supabase
@@ -116,7 +163,6 @@ export function useCareHomeData() {
           if (payload.eventType === "INSERT") {
             const newTodo = payload.new as Todo;
             setTodos((prevTodos) => {
-              // 同じIDが既に存在する場合は重複追加しない（自分自身の操作分との重複防止）
               if (prevTodos.some((todo) => todo.id === newTodo.id)) {
                 return prevTodos;
               }
@@ -127,11 +173,20 @@ export function useCareHomeData() {
             setTodos((prevTodos) =>
               prevTodos.map((todo) => {
                 if (todo.id !== updatedTodo.id) return todo;
+
+                const resolvedMember = updatedTodo.completed_by_id
+                  ? membersRef.current.find(
+                      (m) => m.id === updatedTodo.completed_by_id,
+                    )
+                  : null;
+
                 return {
                   ...todo,
                   ...updatedTodo,
                   completed_by: updatedTodo.is_completed
-                    ? todo.completed_by
+                    ? resolvedMember
+                      ? { display_name: resolvedMember.display_name }
+                      : todo.completed_by
                     : null,
                 };
               }),
@@ -146,9 +201,54 @@ export function useCareHomeData() {
       )
       .subscribe();
 
-    // ★重要：コンポーネントが画面から消える時（クリーンアップ時）に、
-    // 必ずチャンネルの登録を解除する。これを忘れると、画面を何度も開閉した際に
-    // 同じイベントを複数回受け取ってしまう不具合の原因になる
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [pet?.id]);
+
+  // ------------------------------------------------------------
+  // Supabase Realtime：invitationsテーブルの変更を監視
+  // 新規メンバーが招待を受諾した瞬間（is_used: false→true）を検知し、
+  // membersを再取得する。招待受諾時は完全なprofilesレコードがpayloadに
+  // 含まれないため、再fetchで対応する（todos/schedulesとは異なる方針）。
+  // ------------------------------------------------------------
+
+  useEffect(() => {
+    // ★【最重要】バックエンドからの指示通り、変更通知を受け取った際は再fetchせず、
+    // payload.new / payload.old を使ってstateを直接更新する（再fetchはキャッシュ競合の原因になるため禁止）。
+    // pet.idが確定する前にフィルタを組み立てると意味のないチャンネルになるため、
+    // pet?.id が存在する場合のみリスナーを登録する。
+    if (!pet?.id) return;
+
+    const channel = supabase
+      .channel(`invitations-changes-${pet.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "invitations",
+          filter: `pet_id=eq.${pet.id}`,
+        },
+        (payload) => {
+          const oldRow = payload.old as { is_used?: boolean };
+          const newRow = payload.new as { is_used?: boolean };
+
+          //is_usedがfalse→trueに変わった瞬間（＝招待受諾成功の瞬間）のみ反応
+          if (oldRow.is_used === false && newRow.is_used === true) {
+            apiFetch<Member[]>(`/api/pets/${pet.id}/members`)
+              .then((membersData) => {
+                setMembers(membersData ?? []);
+              })
+              .catch(() => {
+                //メンバー再取得に失敗しても致命的ではないため、
+                //静かに失敗させる（次回リロード時に直状態へ復帰する）
+              });
+          }
+        },
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
     };
@@ -159,7 +259,6 @@ export function useCareHomeData() {
   // ------------------------------------------------------------
 
   useEffect(() => {
-    // ★【最重要】Todo同様、再fetchせずpayload.new / payload.oldでstateを直接更新する
     if (!pet?.id) return;
 
     const channel = supabase
@@ -173,6 +272,7 @@ export function useCareHomeData() {
           filter: `pet_id=eq.${pet.id}`,
         },
         (payload) => {
+          console.log("*schedules realtime payload:", payload);
           if (payload.eventType === "INSERT") {
             const newSchedule = payload.new as Schedule;
             setSchedules((prevSchedules) => {
@@ -203,6 +303,50 @@ export function useCareHomeData() {
     };
   }, [pet?.id]);
 
+// ------------------------------------------------------------
+// Supabase Realtime：todo_templatesテーブルの変更を監視
+// ------------------------------------------------------------
+
+useEffect(() => {
+  if (!pet?.id) return;
+
+  const channel = supabase
+    .channel(`todo-templates-changes-${pet.id}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "todo_templates",
+        filter: `pet_id=eq.${pet.id}`,
+      },
+      (payload) => {
+        if (payload.eventType === "INSERT") {
+          const newTemplate = payload.new as TodoTemplate;
+          setTodoTemplates((prev) => {
+            if (prev.some((t) => t.id === newTemplate.id)) return prev;
+            return [...prev, newTemplate];
+          });
+        } else if (payload.eventType === "UPDATE") {
+          const updatedTemplate = payload.new as TodoTemplate;
+          setTodoTemplates((prev) =>
+            prev.map((t) => t.id === updatedTemplate.id ? updatedTemplate : t)
+          );
+        } else if (payload.eventType === "DELETE") {
+          const deletedTemplate = payload.old as TodoTemplate;
+          setTodoTemplates((prev) =>
+            prev.filter((t) => t.id !== deletedTemplate.id)
+          );
+        }
+      },
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [pet?.id]);
+
   return {
     profile,
     pet,
@@ -212,8 +356,15 @@ export function useCareHomeData() {
     schedules,
     setSchedules,
     petList,
+    members,
+    setMembers,
     isLoading,
     loadError,
     isMounted,
+    switchToPet,
+    isSwitching,
+    switchError,
+    todoTemplates,
+    setTodoTemplates,
   };
 }

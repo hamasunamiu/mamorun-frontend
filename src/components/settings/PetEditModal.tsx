@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Dog, Cat } from "lucide-react";
 import { InputField } from "@/components/common/InputField";
 import { TextAreaField } from "@/components/common/TextAreaField";
 import { ToggleOptionGroup } from "@/components/common/ToggleOptionGroup";
@@ -146,7 +147,7 @@ export function PetEditModal({
           type="button"
           onClick={handleSubmit(onSubmit)}
           disabled={isSubmitting}
-          className="w-full rounded-3xl bg-[#C69A6B] hover:bg-[#C69A6B] hover:opacity-85"
+          className="w-full h-12 rounded-2xl"
         >
           {isSubmitting ? (
             <LoadingSpinner size="sm" />
@@ -164,13 +165,22 @@ export function PetEditModal({
           name="species"
           render={({ field: f }) => (
             <ToggleOptionGroup
-              label="種類"
+              label="ペット"
               required
               value={f.value}
               onChange={f.onChange}
+              unselectedClassName="border-[#a8825f] bg-background text-accent-foreground"
               options={[
-                { value: "dog", label: "犬", icon: "🐶" },
-                { value: "cat", label: "猫", icon: "🐱" },
+                {
+                  value: "dog",
+                  label: "犬",
+                  icon: <Dog className="h-4 w-4" aria-hidden="true" />,
+                },
+                {
+                  value: "cat",
+                  label: "猫",
+                  icon: <Cat className="h-4 w-4" aria-hidden="true" />,
+                },
               ]}
               error={errors.species?.message}
             />
@@ -181,6 +191,7 @@ export function PetEditModal({
           label="名前"
           required
           placeholder="例：むぎ"
+          className="border-[#a8825f] placeholder:text-[#8a6d54]"
           {...register("name")}
           error={errors.name?.message}
         />
@@ -194,6 +205,7 @@ export function PetEditModal({
               required
               value={f.value}
               onChange={f.onChange}
+              unselectedClassName="border-[#a8825f] bg-background text-accent-foreground"
               options={[
                 { value: "male", label: "おとこのこ" },
                 { value: "female", label: "おんなのこ" },
@@ -207,6 +219,7 @@ export function PetEditModal({
           label="生年月日"
           required
           type="date"
+          className="border-[#a8825f] register-date-input"
           {...register("birthday")}
           error={errors.birthday?.message}
         />
@@ -214,6 +227,7 @@ export function PetEditModal({
         <TextAreaField
           label="持病・特記事項"
           placeholder="例：アレルギーあり"
+          className="border-[#a8825f] placeholder:text-[#8a6d54]"
           {...register("illness")}
           error={errors.illness?.message}
         />

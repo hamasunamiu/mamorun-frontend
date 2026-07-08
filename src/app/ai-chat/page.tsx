@@ -156,7 +156,7 @@ export default function AiChatPage() {
           <div className="flex justify-end">
             <span
               data-testid="ui004-remaining-count"
-              className="bg-[#f0ece8] border border-[#e0d6ce] text-[#888780] text-xs font-medium px-3 py-1 rounded-full"
+              className="bg-[#FAECE7] border border-[#D85A30] text-[#993C1D] text-xs font-medium px-3 py-1 rounded-full"
             >
               本日の残り相談回数：{remainingCount ?? 0} / 3回
             </span>
@@ -179,7 +179,7 @@ export default function AiChatPage() {
             <div
               className={`rounded-2xl px-3 py-2.5 text-sm leading-relaxed max-w-[75%] ${
                 message.role === "user"
-                  ? "bg-[#D85A30] rounded-br-none text-white"
+                  ? "bg-primary rounded-br-none text-white"
                   : "bg-white border border-[#e0d6ce] rounded-tl-none text-gray-800"
               }`}
             >
@@ -214,11 +214,11 @@ export default function AiChatPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={isSending}
-            className="flex-1 border border-[#e0d6ce] rounded-xl px-3 py-2.5 text-sm bg-[#FFF9F5] outline-none resize-none leading-relaxed disabled:opacity-60"
+            className="flex-1 border border-[#a8825f] rounded-xl px-3 py-2.5 text-sm bg-transparent outline-none resize-none leading-relaxed placeholder:text-[#8a6d54] focus:border-ring focus:ring-3 focus:ring-ring/50 disabled:opacity-60"
           />
           <PrimaryButton
             data-testid="ui004-send-button"
-            className="w-10 h-10 rounded-full bg-[#D85A30] text-white hover:bg-[#D85A30] hover:opacity-85 flex-shrink-0 disabled:opacity-40"
+            className="w-10 h-10 rounded-full bg-primary text-white hover:bg-primary hover:opacity-85 flex-shrink-0 disabled:opacity-40"
             aria-label="送信"
             onClick={handleSubmit}
             disabled={isSubmitDisabled}

@@ -11,7 +11,7 @@ import { EmergencyCallButton } from "@/components/common/EmergencyCallButton";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { formatDateLabel } from "@/lib/dateFormat";
-import type { Pet, Todo, Schedule } from "./_components/types";
+import type { Pet, Todo, Schedule, TodoTemplate } from "@/types";
 import { useCareHomeData } from "./_components/useCareHomeData";
 import { PetSwitchModal } from "@/components/common/PetSwitchModal";
 import { DeleteConfirmModal } from "./_components/DeleteConfirmModal";
@@ -61,6 +61,7 @@ const todoFormSchema = z.object({
     .string()
     .min(1, "タスク名を入力してください")
     .max(250, "250文字以内で入力してください"),
+  isDaily: z.boolean(),
 });
 
 type TodoFormValues = z.infer<typeof todoFormSchema>;
@@ -72,7 +73,6 @@ export default function CareHomePage() {
   const {
     profile,
     pet,
-    setPet,
     todos,
     setTodos,
     schedules,
@@ -80,6 +80,11 @@ export default function CareHomePage() {
     isLoading,
     loadError,
     isMounted,
+    switchToPet,
+    isSwitching,
+    switchError,
+    todoTemplates,
+    setTodoTemplates,
   } = useCareHomeData();
 
   // ------------------------------------------------------------
@@ -109,6 +114,7 @@ export default function CareHomePage() {
     resolver: zodResolver(todoFormSchema),
     defaultValues: {
       taskName: "",
+      isDaily: false,
     },
   });
 
@@ -131,7 +137,7 @@ export default function CareHomePage() {
   // ------------------------------------------------------------
 
   const handleStartAddTodo = () => {
-    resetTodoForm({ taskName: "" });
+    resetTodoForm({ taskName: "", isDaily: false });
     todoModal.openForAdd();
   };
 
@@ -140,7 +146,11 @@ export default function CareHomePage() {
   };
 
   const handleStartEditTodo = (todo: Todo) => {
-    resetTodoForm({ taskName: todo.task_name });
+    const template = todoTemplates.find((t) => t.task_name === todo.task_name);
+    resetTodoForm({
+      taskName: todo.task_name,
+      isDaily: template?.is_active ?? false,
+    });
     todoModal.openForEdit(todo.id);
   };
 
@@ -194,6 +204,44 @@ export default function CareHomePage() {
               : todo,
           ),
         );
+
+        // ★追加：テンプレートの作成・削除処理
+        const existingTemplate = todoTemplates.find(
+          (t) =>
+            t.task_name ===
+            todos.find((td) => td.id === todoModal.editingId)?.task_name,
+        );
+
+        if (values.isDaily && !existingTemplate) {
+          // チェックON かつ テンプレートなし → 新規作成
+          try {
+            const newTemplate = await apiFetch<TodoTemplate>(
+              "/api/todo-templates",
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  task_name: values.taskName,
+                  pet_id: pet?.id,
+                }),
+              },
+            );
+            setTodoTemplates((prev) => [...prev, newTemplate]);
+          } catch (err) {
+            console.error("テンプレート作成失敗:", err);
+          }
+        } else if (!values.isDaily && existingTemplate) {
+          // チェックOFF かつ テンプレートあり → 削除
+          try {
+            await apiFetch(`/api/todo-templates/${existingTemplate.id}`, {
+              method: "DELETE",
+            });
+            setTodoTemplates((prev) =>
+              prev.filter((t) => t.id !== existingTemplate.id),
+            );
+          } catch (err) {
+            console.error("テンプレート削除失敗:", err);
+          }
+        }
       } catch (err) {
         console.error("ToDo更新失敗:", err);
       }
@@ -201,8 +249,29 @@ export default function CareHomePage() {
       try {
         await apiFetch("/api/todos", {
           method: "POST",
-          body: JSON.stringify({ task_name: values.taskName }),
+          body: JSON.stringify({
+            task_name: values.taskName,
+            petId: pet?.id,
+          }),
         });
+
+        if (values.isDaily) {
+          try {
+            const newTemplate = await apiFetch<TodoTemplate>(
+              "/api/todo-templates",
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  task_name: values.taskName,
+                  pet_id: pet?.id,
+                }),
+              },
+            );
+            setTodoTemplates((prev) => [...prev, newTemplate]);
+          } catch (err) {
+            console.error("テンプレート作成失敗:", err);
+          }
+        }
       } catch (err) {
         console.error("ToDo作成失敗:", err);
       }
@@ -242,17 +311,28 @@ export default function CareHomePage() {
     scheduleModal.openForEdit(schedule.id);
   };
 
-  const handleToggleSchedule = async (scheduleId: string) => {
-    const schedule = schedules.find((s) => s.id === scheduleId);
-    if (!schedule) return;
+  // テンプレートON/OFF切り替え
+  const handleToggleTemplate = async (template: TodoTemplate) => {
+    const nextIsActive = !template.is_active;
+
+    // 楽観的更新：自分の操作なので、Realtimeを待たずにその場で表示を更新する
+    setTodoTemplates((prevTemplates) =>
+      prevTemplates.map((t) =>
+        t.id === template.id ? { ...t, is_active: nextIsActive } : t,
+      ),
+    );
 
     try {
-      await apiFetch(`/api/schedules/${scheduleId}`, {
+      await apiFetch(`/api/todo-templates/${template.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ is_completed: !schedule.is_completed }),
+        body: JSON.stringify({ is_active: nextIsActive }),
       });
     } catch (err) {
-      console.error("スケジュール完了切り替え失敗:", err);
+      console.error("テンプレート更新失敗:", err);
+      // 失敗時はロールバック（元の状態に戻す）
+      setTodoTemplates((prevTemplates) =>
+        prevTemplates.map((t) => (t.id === template.id ? template : t)),
+      );
     }
   };
 
@@ -280,6 +360,7 @@ export default function CareHomePage() {
             title: values.title,
             scheduled_content: values.scheduledContent || undefined,
             scheduled_date: values.scheduledDate,
+            petId: pet?.id,
           }),
         });
       } catch (err) {
@@ -310,10 +391,14 @@ export default function CareHomePage() {
     setDeleteTarget(null);
   };
 
-  const handleSwitchPet = (selectedPet: Pet) => {
-    setPet(selectedPet);
-    setSelectedPetId(selectedPet.id);
-    setIsPetSwitchModalOpen(false);
+  const handleSwitchPet = async (selectedPet: Pet) => {
+    const success = await switchToPet(selectedPet);
+    if (success) {
+      setSelectedPetId(selectedPet.id);
+      setIsPetSwitchModalOpen(false);
+    }
+    // 失敗時はここで何もしない
+    // → localStorageは更新されず、モーダルも開いたまま（switchErrorがモーダル内に表示される想定）
   };
 
   // ------------------------------------------------------------
@@ -346,8 +431,7 @@ export default function CareHomePage() {
         petName={pet?.name}
         petSpecies={pet?.species}
         onPetSwitch={() => {
-          // TODO: 複数ペット一覧取得APIの仕様確定後に実装
-          if (petList.length > 1) {
+          if (petList.length > 1 && !isSwitching) {
             setIsPetSwitchModalOpen(true);
           }
         }}
@@ -365,13 +449,17 @@ export default function CareHomePage() {
           </p>
         )}
 
+        {switchError && <ErrorMessage message={switchError} />}
+
         {/* 今日のお世話ToDoチェックリスト */}
         <TodoSection
           todos={todos}
+          todoTemplates={todoTemplates}
           onAddClick={handleStartAddTodo}
           onToggle={handleToggleTodo}
           onDeleteRequest={handleRequestDeleteTodo}
           onEdit={handleStartEditTodo}
+          onToggleTemplate={handleToggleTemplate}
         />
 
         {/* 今後の予定一覧 */}
@@ -379,7 +467,6 @@ export default function CareHomePage() {
           schedules={schedules}
           isMounted={isMounted}
           onAddClick={handleStartAddSchedule}
-          onToggle={handleToggleSchedule}
           onDeleteRequest={handleRequestDeleteSchedule}
           onEdit={handleStartEditSchedule}
         />

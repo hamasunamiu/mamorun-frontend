@@ -6,13 +6,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NotebookPen } from "lucide-react";
 
 type ScheduleCardProps = {
   title: string;
   content: string | null;
   daysUntilLabel: string;
-  isCompleted: boolean;
-  onToggle: () => void;
   onDelete: () => void;
   onEdit: () => void;
 };
@@ -21,8 +20,6 @@ export function ScheduleCard({
   title,
   content,
   daysUntilLabel,
-  isCompleted,
-  onToggle,
   onDelete,
   onEdit,
 }: ScheduleCardProps) {
@@ -31,45 +28,13 @@ export function ScheduleCard({
 
   return (
     <div className="flex items-center gap-3 rounded-2xl bg-white p-4">
-      {/* ★チェックボックス：ToDoCardと同じスタイルで統一（44px以上のタップ領域） */}
-      <button
-        type="button"
-        onClick={onToggle}
-        role="checkbox"
-        aria-checked={isCompleted}
-        aria-label={`${title}を${isCompleted ? "未完了" : "完了"}にする`}
-        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 transition-colors ${
-          isCompleted
-            ? "border-primary bg-primary hover:bg-primary/80"
-            : "border-accent-foreground/30 bg-white hover:border-primary hover:bg-accent"
-        }`}
-      >
-        {isCompleted && (
-          <svg
-            viewBox="0 0 16 16"
-            className="h-3.5 w-3.5 text-white"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M3 8.5L6.5 12L13 4.5"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        )}
-      </button>
+      <NotebookPen
+        className="h-5 w-5 shrink-0 text-accent-foreground"
+        aria-hidden="true"
+      />
 
       <div className="min-w-0 flex-1">
-        <span
-          className={`block truncate text-sm font-medium ${
-            isCompleted
-              ? "text-muted-foreground line-through"
-              : "text-foreground"
-          }`}
-        >
+        <span className="block truncate text-sm font-medium text-foreground">
           {title}
         </span>
         {content && (

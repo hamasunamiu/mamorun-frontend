@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { PenLine, Trash2, Plus } from "lucide-react";
+import { Trash2, Plus } from "lucide-react";
 import { Header } from "@/components/common/Header";
 import { BottomNavigation } from "@/components/common/BottomNavigation";
 import { InputField } from "@/components/common/InputField";
@@ -9,11 +9,12 @@ import { ImageUploader } from "@/components/common/ImageUploader";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { Modal } from "@/components/common/Modal";
 import { apiFetch, ApiError } from "@/lib/api-client";
-import type { Pet } from "@/types";
+import type { Pet, Member } from "@/types";
 import { uploadPetImage } from "@/lib/petImageUpload";
 import { PetSwitchModal } from "@/components/common/PetSwitchModal";
 import { getSelectedPetId, setSelectedPetId } from "@/lib/petStorage";
 import { supabase } from "@/lib/supabase";
+import Image from "next/image";
 
 type HealthLog = {
   id: string;
@@ -35,6 +36,7 @@ export default function TimelinePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [imageUploaderKey, setImageUploaderKey] = useState(0);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [pet, setPet] = useState<Pet | null>(null);
@@ -42,43 +44,75 @@ export default function TimelinePage() {
   const [isPetSwitchModalOpen, setIsPetSwitchModalOpen] = useState(false);
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
 
+  const [memberMap, setMemberMap] = useState<Map<string, string | null>>(
+    new Map(),
+  );
+
+  // ★petIdを指定して体調ログを取得するヘルパー
+  // 初回読み込み・ペット切り替え時の両方から呼び出す
+  const fetchLogsForPet = async (petId: string) => {
+    try {
+      const logsData = await apiFetch<HealthLog[]>(
+        `/api/health-logs?petId=${petId}`,
+      );
+      setLogs(logsData ?? []);
+    } catch (err) {
+      console.error("体調ログ取得失敗:", err);
+      setError("体調ログの取得に失敗しました。");
+    }
+  };
+
   useEffect(() => {
-    const fetchLogs = async () => {
+    const fetchInitialData = async () => {
+      setIsLoading(true);
       const savedPetId = getSelectedPetId();
 
-      const [logsResult, profileResult] = await Promise.allSettled([
-        apiFetch<HealthLog[]>("/api/health-logs"),
-        apiFetch<{ id: string; pet_id: string | null }>("/api/profiles/me"),
-      ]);
+      try {
+        const profileData = await apiFetch<{
+          id: string;
+          pet_id: string | null;
+        }>("/api/profiles/me");
 
-      if (logsResult.status === "fulfilled") {
-        setLogs(logsResult.value ?? []);
-      } else {
-        setError("体調ログの取得に失敗しました。");
-      }
+        setCurrentUserId(profileData.id);
 
-      if (profileResult.status === "fulfilled") {
-        setCurrentUserId(profileResult.value.id);
+        const targetPetId = savedPetId ?? profileData.pet_id;
 
-        const targetPetId = savedPetId ?? profileResult.value.pet_id;
         if (targetPetId) {
-          try {
-            const [petData, petListData] = await Promise.all([
-              apiFetch<Pet>(`/api/pets/${targetPetId}`),
-              apiFetch<Pet[]>("/api/pets"),
-            ]);
-            setPet(petData);
-            setPetList(petListData ?? []);
-          } catch (err) {
-            console.error("ペット情報取得失敗:", err);
-          }
-        }
-      }
+          const [petData, petListData] = await Promise.all([
+            apiFetch<Pet>(`/api/pets/${targetPetId}`),
+            apiFetch<Pet[]>("/api/pets"),
+          ]);
+          setPet(petData);
+          setPetList(petListData ?? []);
 
-      setIsLoading(false);
+          // ★petIdが決まってから体調ログを取得する
+          await fetchLogsForPet(targetPetId);
+        }
+      } catch {
+        // ★プロフィール取得自体が失敗した場合は致命的なエラーとして扱う
+        setLoadError("情報の読み込みに失敗しました。もう一度お試しください。");
+      } finally {
+        setIsLoading(false);
+      }
     };
-    fetchLogs();
+
+    fetchInitialData();
   }, []);
+
+  useEffect(() => {
+    if (!pet?.id) return;
+
+    const fetchMembers = async () => {
+      try {
+        const members = await apiFetch<Member[]>(`/api/pets/${pet.id}/members`);
+        setMemberMap(new Map(members.map((m) => [m.id, m.display_name])));
+      } catch (err) {
+        console.error("家族メンバー取得失敗:", err);
+      }
+    };
+
+    fetchMembers();
+  }, [pet?.id]);
 
   useEffect(() => {
     if (!pet?.id) return;
@@ -91,11 +125,16 @@ export default function TimelinePage() {
           event: "*",
           schema: "public",
           table: "health_logs",
-          filter: `pet_id=eq.${pet.id}`,
+          // ★filterを削除：SupabaseのDELETEイベントはpayload.oldに
+          //   全カラムが含まれないことがあり、filter条件と一致せず
+          //   通知が届かないことがあるため。フロント側でチェックする方式に変更
         },
         (payload) => {
+          console.log("★health_logs realtime event:", payload);
           if (payload.eventType === "INSERT") {
             const newLog = payload.new as HealthLog;
+            // ★filterを外した分、ここでpet_idチェックを追加
+            if (newLog.pet_id !== pet.id) return;
             setLogs((prevLogs) => {
               if (prevLogs.some((l) => l.id === newLog.id)) {
                 return prevLogs;
@@ -104,6 +143,10 @@ export default function TimelinePage() {
             });
           } else if (payload.eventType === "DELETE") {
             const deletedLog = payload.old as HealthLog;
+            // ★DELETE時はpayload.oldにpet_idが含まれない可能性があるため、
+            //   pet_idチェックはせず、該当idがあれば無条件で除去する
+            //   （idはグローバルに一意なUUIDのため、他ペットのログが誤って
+            //   混ざる心配はない）
             setLogs((prevLogs) =>
               prevLogs.filter((l) => l.id !== deletedLog.id),
             );
@@ -119,15 +162,24 @@ export default function TimelinePage() {
     };
   }, [pet?.id]);
 
+  const getAvatarInitial = (createdById: string | null) => {
+    if (!createdById) return "?";
+    const displayName = memberMap.get(createdById);
+    if (displayName) {
+      return displayName.slice(0, 1).toUpperCase();
+    }
+    return createdById.slice(0, 1).toUpperCase();
+  };
+
   const isSubmitDisabled = title.trim() === "" || isSubmitting;
 
   const handleSubmit = async () => {
-    if (isSubmitDisabled) return;
+    if (isSubmitDisabled || !pet) return;
     setIsSubmitting(true);
     try {
       let attachedImageUrl: string | undefined;
 
-      if (imageFile && pet) {
+      if (imageFile) {
         attachedImageUrl = await uploadPetImage(
           pet.id,
           imageFile,
@@ -135,12 +187,14 @@ export default function TimelinePage() {
         );
       }
 
-      const newLog = await apiFetch<HealthLog>("/api/health-logs", {
+      await apiFetch<HealthLog>("/api/health-logs", {
         method: "POST",
         body: JSON.stringify({
           title,
           detail_memo: memo,
           attached_image_url: attachedImageUrl,
+          // ★ペット切り替え対応：現在選択中のpetIdを明示的に送信
+          petId: pet.id,
         }),
       });
 
@@ -170,6 +224,9 @@ export default function TimelinePage() {
       await apiFetch(`/api/health-logs/${deleteTargetId}`, {
         method: "DELETE",
       });
+      setLogs((prevLogs) =>
+        prevLogs.filter((log) => log.id !== deleteTargetId),
+      );
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -182,10 +239,15 @@ export default function TimelinePage() {
     }
   };
 
-  const handleSwitchPet = (selectedPet: Pet) => {
+  const handleSwitchPet = async (selectedPet: Pet) => {
     setPet(selectedPet);
     setSelectedPetId(selectedPet.id);
     setIsPetSwitchModalOpen(false);
+
+    // ★ペット切り替え時：新しいpetIdでログを再取得する
+    setIsLoading(true);
+    await fetchLogsForPet(selectedPet.id);
+    setIsLoading(false);
   };
 
   return (
@@ -193,11 +255,6 @@ export default function TimelinePage() {
       <Header
         petName={pet?.name}
         petSpecies={pet?.species}
-        dateLabel={new Date().toLocaleDateString("ja-JP", {
-          month: "long",
-          day: "numeric",
-          weekday: "short",
-        })}
         onPetSwitch={() => {
           if (petList.length > 1) {
             setIsPetSwitchModalOpen(true);
@@ -219,26 +276,33 @@ export default function TimelinePage() {
 
       {/* 過去の投稿一覧（スクロールエリア） */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-        {isLoading ? (
-          <div className="text-center text-sm text-gray-400 py-8">
+        {loadError ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+            <p className="text-sm text-muted-foreground">{loadError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 rounded-lg bg-primary text-white text-sm"
+            >
+              再読み込み
+            </button>
+          </div>
+        ) : isLoading ? (
+          <div className="text-center text-sm text-muted-foreground py-8">
             読み込み中...
           </div>
         ) : logs.length === 0 ? (
-          <div className="text-center text-sm text-gray-400 py-8">
+          <div className="text-center text-sm text-muted-foreground py-8">
             まだ記録がありません
           </div>
         ) : (
           logs.map((log) => (
-            <div
-              key={log.id}
-              className="bg-white rounded-2xl border border-[#e0d6ce] p-4"
-            >
+            <div key={log.id} className="bg-white rounded-2xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 rounded-full bg-[#FAECE7] flex items-center justify-center text-xs font-medium text-[#993C1D]">
-                  {log.created_by_id?.slice(0, 1).toUpperCase() ?? "?"}
+                <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center text-xs font-medium text-accent-foreground">
+                  {getAvatarInitial(log.created_by_id)}
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-sm text-muted-foreground">
                     {new Date(log.created_at).toLocaleDateString("ja-JP", {
                       month: "long",
                       day: "numeric",
@@ -248,30 +312,32 @@ export default function TimelinePage() {
                   </p>
                 </div>
               </div>
-              <p className="text-sm font-medium text-gray-800 mb-1">
+              <p className="text-base font-semibold text-[#6E5849] mb-1">
                 {log.title}
               </p>
               {log.attached_image_url && (
-                <div className="w-full max-h-64 bg-[#f5f0ea] rounded-lg mb-2 flex items-center justify-center overflow-hidden">
-                  <img
+                <div className="w-full max-h-64 bg-muted rounded-lg mb-2 flex items-center justify-center overflow-hidden">
+                  <Image
                     src={log.attached_image_url}
                     alt="添付画像"
+                    width={400}
+                    height={256}
                     className="max-w-full max-h-64 object-contain"
                   />
                 </div>
               )}
               {log.detail_memo && (
-                <p className="text-sm text-gray-500 leading-relaxed mb-3">
+                <p className="text-sm text-muted-foreground leading-relaxed mb-3">
                   {log.detail_memo}
                 </p>
               )}
               {currentUserId === log.created_by_id && (
-                <div className="flex justify-end border-t border-[#f0e8e0] pt-2">
+                <div className="flex justify-end border-t border-border pt-2">
                   <button
-                    className="flex items-center gap-1 text-xs text-gray-400"
+                    className="flex items-center gap-1 text-xs text-gray-500"
                     onClick={() => handleDeleteClick(log.id)}
                   >
-                    <Trash2 size={12} strokeWidth={1} />
+                    <Trash2 size={12} strokeWidth={2} />
                     削除
                   </button>
                 </div>
@@ -296,16 +362,13 @@ export default function TimelinePage() {
         title="今日の記録を追加"
       >
         <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-1.5 text-sm font-medium text-[#993C1D]">
-            <PenLine size={14} strokeWidth={1} />
-            今日の記録
-          </div>
           <InputField
             label="タイトル"
             name="title"
             data-testid="log-title-input"
             placeholder="例：朝の体調チェック"
             required
+            className="border-[#a8825f] placeholder:text-[#8a6d54]"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
@@ -314,6 +377,7 @@ export default function TimelinePage() {
             name="memo"
             data-testid="log-memo-input"
             placeholder="例：食欲あり、元気です"
+            className="border-[#a8825f] placeholder:text-[#8a6d54]"
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
           />
@@ -325,7 +389,7 @@ export default function TimelinePage() {
           {error && <p className="text-xs text-red-500">{error}</p>}
           <PrimaryButton
             data-testid="ui003-post-log-button"
-            className="w-full bg-[#D85A30] text-white hover:bg-[#D85A30] hover:opacity-85"
+            className="w-full h-12 rounded-2xl"
             onClick={handleSubmit}
             disabled={isSubmitDisabled}
           >
@@ -342,13 +406,13 @@ export default function TimelinePage() {
         footer={
           <div className="flex gap-2 w-full">
             <button
-              className="flex-1 py-2 rounded-lg border border-[#e0d6ce] text-sm text-gray-500"
+              className="flex-1 py-2 rounded-lg border border-border text-sm text-gray-500"
               onClick={() => setIsDeleteModalOpen(false)}
             >
               キャンセル
             </button>
             <button
-              className="flex-1 py-2 rounded-lg bg-red-500 text-white text-sm"
+              className="flex-1 py-2 rounded-lg bg-[#C1583D] text-white text-sm hover:bg-[#A84A32]"
               onClick={handleDeleteConfirm}
             >
               削除する

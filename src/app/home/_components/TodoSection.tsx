@@ -3,22 +3,26 @@
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { PawPrint } from "lucide-react";
 import { TodoCard } from "./TodoCard";
-import type { Todo } from "./types";
+import type { Todo, TodoTemplate } from "./types";
 
 type TodoSectionProps = {
   todos: Todo[];
+  todoTemplates: TodoTemplate[];  // ★追加
   onAddClick: () => void;
   onToggle: (todoId: string) => void;
   onDeleteRequest: (todo: Todo) => void;
   onEdit: (todo: Todo) => void;
+  onToggleTemplate: (template: TodoTemplate) => void;  // ★追加
 };
 
 export function TodoSection({
   todos,
+  todoTemplates,
   onAddClick,
   onToggle,
   onDeleteRequest,
   onEdit,
+  onToggleTemplate,
 }: TodoSectionProps) {
   return (
     <section className="flex flex-col gap-3">
@@ -44,19 +48,26 @@ export function TodoSection({
         </p>
       ) : (
         <div className="flex flex-col gap-2">
-          {todos.map((todo) => (
-            <TodoCard
-              key={todo.id}
-              id={todo.id}
-              taskName={todo.task_name}
-              isCompleted={todo.is_completed}
-              completedById={todo.completed_by_id}
-              completedByName={todo.completed_by?.display_name ?? null}
-              onToggle={() => onToggle(todo.id)}
-              onDelete={() => onDeleteRequest(todo)}
-              onEdit={() => onEdit(todo)}
-            />
-          ))}
+          {todos.map((todo) => {
+            // ★task_nameが一致するテンプレートを検索
+            const template =
+              todoTemplates.find((t) => t.task_name === todo.task_name) ?? null;
+            return (
+              <TodoCard
+                key={todo.id}
+                id={todo.id}
+                taskName={todo.task_name}
+                isCompleted={todo.is_completed}
+                completedById={todo.completed_by_id}
+                completedByName={todo.completed_by?.display_name ?? null}
+                template={template}
+                onToggle={() => onToggle(todo.id)}
+                onDelete={() => onDeleteRequest(todo)}
+                onEdit={() => onEdit(todo)}
+                onToggleTemplate={onToggleTemplate}
+              />
+            );
+          })}
         </div>
       )}
     </section>

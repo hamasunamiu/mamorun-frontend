@@ -35,6 +35,8 @@ function renderEditView(props?: {
   onSubmitSpy?: () => void;
   onHospitalCardSelect?: (file: File | null) => void;
   onInsuranceCardSelect?: (file: File | null) => void;
+  onHospitalCardRemove?: () => void;
+  onInsuranceCardRemove?: () => void;
   saveError?: string | null;
   isSubmitting?: boolean;
   onCancel?: () => void;
@@ -63,6 +65,8 @@ function renderEditView(props?: {
         errors={errors}
         onHospitalCardSelect={props?.onHospitalCardSelect ?? jest.fn()}
         onInsuranceCardSelect={props?.onInsuranceCardSelect ?? jest.fn()}
+        onHospitalCardRemove={props?.onHospitalCardRemove ?? jest.fn()}
+        onInsuranceCardRemove={props?.onInsuranceCardRemove ?? jest.fn()}
         saveError={props?.saveError ?? null}
         isSubmitting={props?.isSubmitting ?? false}
         onCancel={props?.onCancel ?? jest.fn()}
